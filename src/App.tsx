@@ -3,10 +3,25 @@ import Heatmap from "./Heatmap";
 import { currentStreak, longestStreak, toKey } from "./dates";
 import { Habit, loadHabits, saveHabits } from "./storage";
 
-const COLORS = ["#22a35a", "#2f7de1", "#d9480f", "#9c36b5", "#e8590c", "#0c8599"];
+// Bright tones that stay readable on a black background.
+const COLORS = ["#4ade80", "#60a5fa", "#f472b6", "#facc15", "#a78bfa", "#2dd4bf"];
+
+// Habits saved before the dark theme used darker colors; map them to the new palette.
+const LEGACY: Record<string, string> = {
+  "#22a35a": "#4ade80",
+  "#2f7de1": "#60a5fa",
+  "#d9480f": "#f472b6",
+  "#9c36b5": "#a78bfa",
+  "#e8590c": "#facc15",
+  "#0c8599": "#2dd4bf",
+};
+
+function loadWithColors(): Habit[] {
+  return loadHabits().map((h) => ({ ...h, color: LEGACY[h.color] ?? h.color }));
+}
 
 export default function App() {
-  const [habits, setHabits] = useState<Habit[]>(loadHabits);
+  const [habits, setHabits] = useState<Habit[]>(loadWithColors);
   const [name, setName] = useState("");
   const today = useMemo(() => new Date(), []);
   const todayKey = toKey(today);
