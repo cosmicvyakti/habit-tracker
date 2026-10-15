@@ -1,7 +1,6 @@
 export interface Habit {
   id: string;
   name: string;
-  color: string;
   createdAt: string;
   /** Completed days as YYYY-MM-DD keys. */
   done: string[];

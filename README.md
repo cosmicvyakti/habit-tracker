@@ -9,7 +9,7 @@ A small React + TypeScript web app. Add habits, tick them off each day, and see 
 - Add and delete habits
 - Mark today done with one click, or click any heatmap cell to fix past days
 - Current streak, longest streak and total completions per habit
-- Dark monochrome theme with a monospace font
+- Dark theme modelled on OpenRouter, with a lime accent and a monospace font
 
 ## Live app
 

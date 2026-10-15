@@ -2,7 +2,6 @@ import { heatmapWeeks, toKey } from "./dates";
 
 interface Props {
   done: Set<string>;
-  color: string;
   today: Date;
   onToggle: (key: string) => void;
 }
@@ -10,7 +9,7 @@ interface Props {
 const WEEKS = 26;
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-export default function Heatmap({ done, color, today, onToggle }: Props) {
+export default function Heatmap({ done, today, onToggle }: Props) {
   const weeks = heatmapWeeks(today, WEEKS);
   return (
     <div className="heatmap" role="grid" aria-label="Completion calendar">
@@ -32,7 +31,6 @@ export default function Heatmap({ done, color, today, onToggle }: Props) {
                 <button
                   key={i}
                   className={"cell" + (on ? " on" : "")}
-                  style={on ? { background: color } : undefined}
                   title={`${d.toDateString()}${on ? " ✓" : ""}`}
                   aria-label={`${d.toDateString()} ${on ? "done" : "not done"}`}
                   aria-pressed={on}
