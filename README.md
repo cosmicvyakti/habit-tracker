@@ -11,6 +11,12 @@ A small React + TypeScript web app. Add habits, tick them off each day, and see 
 - Current streak, longest streak and total completions per habit
 - Light and dark mode
 
+## Live app
+
+https://cosmicvyakti.github.io/habit-tracker/
+
+Every push to `main` runs the tests, builds the app and deploys it to GitHub Pages.
+
 ## Development
 
 ```bash
