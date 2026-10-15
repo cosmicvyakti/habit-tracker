@@ -1,8 +1,11 @@
+import { Frequency, FREQUENCIES } from "./dates";
+
 export interface Habit {
   id: string;
   name: string;
+  frequency: Frequency;
   createdAt: string;
-  /** Completed days as YYYY-MM-DD keys. */
+  /** Completed periods, keyed by the YYYY-MM-DD of each period's first day. */
   done: string[];
 }
 
@@ -12,7 +15,12 @@ export function loadHabits(): Habit[] {
   try {
     const raw = localStorage.getItem(KEY);
     const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    // Habits saved before frequencies existed are daily habits.
+    return parsed.map((h) => ({
+      ...h,
+      frequency: FREQUENCIES.includes(h.frequency) ? h.frequency : "daily",
+    }));
   } catch {
     return [];
   }
