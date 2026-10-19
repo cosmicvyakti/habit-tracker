@@ -56,9 +56,18 @@ function PlanForm({ habit }: { habit: Habit | undefined }) {
   return (
     <main className="mx-auto w-full max-w-md px-4 pt-4 pb-8 sm:px-6 sm:pt-8">
       <h1 className="title-page">{habit ? "Edit plan" : "New habit"}</h1>
+      {/* The plan writes itself as you type, in the serif Today shows it in. Blanks show the example in grey. */}
+      <form.Subscribe selector={(s) => s.values}>
+        {(v) => (
+          <p className="lead-sentence mt-6 break-words" aria-live="polite">
+            After <Blank value={v.cue} example={FIELDS[0].example} />, I will <Blank value={v.behavior} example={FIELDS[1].example} />{" "}
+            {v.context.trim() ? where(v.context) : <span className="text-fg-3">{FIELDS[2].example}</span>}.
+          </p>
+        )}
+      </form.Subscribe>
       <form
         ref={formRef}
-        className="mt-8 flex flex-col gap-4"
+        className="mt-6 flex flex-col gap-4"
         noValidate
         onSubmit={(e) => {
           e.preventDefault();
@@ -110,13 +119,6 @@ function PlanForm({ habit }: { habit: Habit | undefined }) {
             </div>
           )}
         </form.Field>
-        <form.Subscribe selector={(s) => s.values}>
-          {(v) => (
-            <p className="body text-fg-2" aria-live="polite">
-              After {v.cue || "[cue]"}, I will {v.behavior || "[behavior]"} {v.context.trim() ? where(v.context) : "[where]"}.
-            </p>
-          )}
-        </form.Subscribe>
         <form.Subscribe selector={(s) => s.isSubmitting}>
           {(submitting) => (
             <div className="mt-4 flex flex-col gap-2 sm:flex-row">
@@ -132,4 +134,9 @@ function PlanForm({ habit }: { habit: Habit | undefined }) {
       </form>
     </main>
   );
+}
+
+/** A part of the plan sentence: what was typed, or the field's example in grey until then. */
+function Blank({ value, example }: { value: string; example: string }) {
+  return value.trim() ? <>{value.trim()}</> : <span className="text-fg-3">{example}</span>;
 }
