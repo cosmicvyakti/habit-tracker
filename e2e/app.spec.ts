@@ -267,6 +267,36 @@ test("sign in again after the session ends, without losing a change", async ({ p
   await expect(page.getByText(`${before + 1} logged events`)).toBeVisible();
 });
 
+test("logs made offline in two tabs both sync", async ({ page, context, browser }) => {
+  await page.goto("/log?habit=seed-stretch");
+  const before = Number((await page.locator("caption").textContent())?.match(/(\d+) logged events?/)?.[1]);
+  await page.goto("/");
+  const second = await context.newPage();
+  await second.goto("/");
+  // Already logged today, so each tab logs it again from its sheet.
+  const log = async (p: Page) =>
+    (await openSheet(p, "stretch for 5 minutes")).getByRole("button", { name: /^Log( again)? stretch for 5 minutes$/ }).click();
+  const status = (p: Page, text: string) => p.getByRole("status").filter({ hasText: text });
+
+  // No connection in either tab: the installed app and a browser tab, say. Each logs once.
+  await context.route("**/_serverFn/**", (route) => route.abort("internetdisconnected"));
+  await log(page);
+  await expect(status(page, "Offline. 1 change waiting to sync.")).toBeVisible();
+  await log(second);
+  await expect(status(second, "Offline. 2 changes waiting to sync.")).toBeVisible();
+
+  // The first tab closes before it could sync; the second one sends both.
+  await page.close();
+  await context.unroute("**/_serverFn/**");
+  await second.evaluate(() => window.dispatchEvent(new Event("online")));
+  await expect(status(second, "waiting")).toHaveCount(0);
+
+  const fresh = await browser.newPage({ storageState: AUTH_FILE });
+  await fresh.goto("/log?habit=seed-stretch");
+  await expect(fresh.getByText(`${before + 2} logged events`)).toBeVisible();
+  await fresh.close();
+});
+
 test("too many wrong passwords lock sign-in for that address", async ({ browser }) => {
   // Its own address, as Cloudflare would report it, so the lock can't reach the other tests.
   const context = await browser.newContext({

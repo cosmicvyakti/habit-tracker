@@ -111,7 +111,9 @@ async function flush() {
         saveLog(log);
         return log;
       });
-      set(outbox.slice(batch.length), null);
+      // Drop by value: another tab may have changed the outbox while this batch was in flight.
+      const sent = new Set(batch.map((op) => JSON.stringify(op)));
+      set(outbox.filter((op) => !sent.has(JSON.stringify(op))), null);
       const rejected = batch.length - accepted.length;
       if (rejected)
         notify(
@@ -163,11 +165,20 @@ export function startSync(queryClient: QueryClient, onMessage: (message: string)
   notify = onMessage;
   const kick = () => void flush();
   const onVisible = () => document.visibilityState === "visible" && kick();
+  // Another tab changed the outbox: take its copy without writing back, so the tabs don't ping-pong.
+  const onStorage = (e: StorageEvent) => {
+    if (e.key !== OUTBOX_KEY) return;
+    outbox = read<Op[]>(OUTBOX_KEY) ?? [];
+    state = { pending: outbox.length, problem: state.problem };
+    listeners.forEach((l) => l());
+  };
   window.addEventListener("online", kick);
+  window.addEventListener("storage", onStorage);
   document.addEventListener("visibilitychange", onVisible);
   kick();
   return () => {
     window.removeEventListener("online", kick);
+    window.removeEventListener("storage", onStorage);
     document.removeEventListener("visibilitychange", onVisible);
     clearTimeout(retry);
   };
