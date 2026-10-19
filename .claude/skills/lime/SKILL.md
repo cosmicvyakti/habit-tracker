@@ -117,14 +117,14 @@ Not in the system yet, and what to build meanwhile.
 - `import {ListItemMenu} from '@/components/lime/ui/list-item-menu'`: A row's other actions behind a more button, for ListItem's menu.
 - `import {Collapsible, CollapsibleTrigger, CollapsibleContent} from '@/components/lime/ui/collapsible'`: One section that opens and closes, the base of the Why? in Approval request.
 - `import {cn, mergeClass} from '@/lib/lime/utils'`: cn, which merges class names and knows Lime's radius and shadow names, and mergeClass, which keeps Lime's classes when className is a function of state.
-- `import {Icon} from '@/components/lime/icon'`: The one import point for Carbon icons.
+- `import {Icon} from '@/components/lime/icon'`: The one import point for icons, Lucide in this project.
 - `import {LimePortalProvider, useLimePortal} from '@/lib/lime/portal'`: Puts overlays inside the .lime scope so they keep its tokens.
 - `import {useFocusWhenReplaced} from '@/lib/lime/use-focus-when-replaced'`: Moves focus to an outcome when the buttons that had it are replaced, so a keyboard user is not dropped to the top.
 - `import {popupClass, itemClass, groupLabelClass, separatorClass} from '@/lib/lime/popup'`: The panel, item and separator classes every floating list shares.
 
 ## Icons
 Import a glyph beside Icon from the path under Imports and pass it in: `<Icon icon={Add} size={16}/>`. These are all the names; another needs adding to that file first.
-Add, ArrowDown, ArrowRight, ArrowUp, Attachment, Checkmark, CheckmarkFilled, ChevronDown, ChevronRight, ChevronSort, ChevronUp, Close, Copy, ErrorFilled, Image, Information, Menu, Play, Receipt, Renew, Search, Send, Subtract, Time, Upload, Wallet, PiggyBank, Warning, WarningFilled, ChevronLeft, ArrowLeft, Pause, OverflowMenuHorizontal, Folder, Star, Plus, Delete, Cafe, ShoppingBag, Notification, Locked, Undo, Edit, CircleDash, Location
+Add, ArrowDown, ArrowRight, ArrowUp, Attachment, Checkmark, CheckmarkFilled, ChevronDown, ChevronRight, ChevronSort, ChevronUp, Close, Copy, ErrorFilled, Image, Information, Menu, Play, Receipt, Renew, Search, Send, Subtract, Time, Upload, Wallet, PiggyBank, Warning, WarningFilled, ChevronLeft, ArrowLeft, Pause, OverflowMenuHorizontal, Folder, Star, Plus, Delete, Cafe, ShoppingBag, Notification, Locked, Undo, Edit, CircleDash, Location, Moon, Sun, CalendarDays, ChartLine, History, LogOut
 
 ## Tokens
 The closed list. Use a token through its class, never a raw value: colors are utilities named after the role (bg-surface, text-fg, border-line); sizes read the scale (text-sm, rounded-field, shadow-card, h-(--control-lg), duration-(--dur-fast)).

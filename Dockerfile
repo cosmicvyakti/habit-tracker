@@ -9,7 +9,7 @@ FROM node:24-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 # No install scripts: better-sqlite3 ships prebuilt binaries, which some npm versions try to
-# compile anyway, and the only other scripts are the Carbon icons' telemetry.
+# compile anyway, and no other dependency needs one.
 RUN npm ci --no-fund --no-audit --ignore-scripts
 COPY . .
 RUN npm run typecheck && npm test && npm run build && npm prune --omit=dev
