@@ -331,6 +331,33 @@ test("on a phone, the menu opens every place over the page", async ({ page }) =>
   await expect(menu).toBeFocused();
 });
 
+test("a page left open across a deploy offers a reload", async ({ page, context }) => {
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Today", level: 1 })).toBeVisible();
+  const notice = page.getByText("Habit tracker has been updated");
+  const comeBack = async () => {
+    const checked = page.waitForResponse((r) => r.url().endsWith("/?build"));
+    await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+    await checked;
+  };
+
+  // Coming back with nothing new deployed says nothing.
+  await comeBack();
+  await expect(notice).toHaveCount(0);
+
+  // A deploy renames the built files. Routed on the context, so the service worker's fetch is caught too.
+  await context.route("**/?build", (route) =>
+    route.fulfill({ contentType: "text/html", body: '<!DOCTYPE html><script type="module" src="/assets/index-new.js"></script>' }),
+  );
+  await comeBack();
+  await expect(notice).toBeVisible();
+  await expectNoAxeViolations(page);
+  await page.getByRole("button", { name: "Reload app" }).click();
+  await expect(page.getByRole("heading", { name: "Today", level: 1 })).toBeVisible();
+  await expect(notice).toHaveCount(0);
+  await context.unroute("**/?build");
+});
+
 // Runs next to last: it archives every habit, which the tests above need.
 test("archive every habit, then the empty states", async ({ page }) => {
   await page.goto("/");

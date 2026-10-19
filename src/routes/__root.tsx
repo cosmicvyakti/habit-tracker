@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRootRouteWithContext, HeadContent, Outlet, redirect, Scripts, useRouterState } from "@tanstack/react-router";
-import { ReactNode, Suspense, useEffect } from "react";
+import { ReactNode, Suspense } from "react";
 import { ToastProvider } from "@/components/lime/ui/toast";
 import lime from "@/components/lime/styles.css?url";
 import fonts from "../fonts.css?url";
@@ -8,6 +8,7 @@ import { LimePortalProvider } from "@/lib/lime/portal";
 import { Sidebar, TopBar } from "../components/Navigation";
 import SyncStatus from "../components/SyncStatus";
 import ThemeToggle, { THEME_KEY } from "../components/ThemeToggle";
+import UpdateNotice from "../components/UpdateNotice";
 import { AutoMigrateV1 } from "../components/V1Import";
 import { signedIn } from "../data";
 
@@ -52,14 +53,11 @@ const THEME_SCRIPT = `try { document.documentElement.dataset.theme = localStorag
 function Root() {
   const { queryClient } = Route.useRouteContext();
   const atSignIn = useRouterState({ select: (s) => s.location.pathname === "/sign-in" });
-  // Production only: in development the worker would serve stale modules.
-  useEffect(() => {
-    if (import.meta.env.PROD && "serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
-  }, []);
   return (
     <QueryClientProvider client={queryClient}>
       <LimePortalProvider>
         <ToastProvider>
+          <UpdateNotice />
           <div className="min-h-dvh bg-page text-fg">
             {atSignIn ? (
               <>
