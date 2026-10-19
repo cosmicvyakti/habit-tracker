@@ -46,6 +46,10 @@ const features = tableFeatures({
 const col = createColumnHelper<typeof features, Row>();
 // Numeric columns align to the end, per Lime's table-numbers-end rule.
 const NUMERIC = new Set(["effort"]);
+// Below 48rem of page width these columns fold into a line under the habit, so the table fits without scrolling sideways.
+const FOLDED = new Set(["context", "precededBy", "effort", "payoffNoticed"]);
+const payoffText = (e: { payoffNoticed: boolean | null; payoffNote: string | null }) =>
+  `${e.payoffNoticed === null ? "-" : e.payoffNoticed ? "Yes" : "No"}${e.payoffNote ? `: ${e.payoffNote}` : ""}`;
 const whenText = (at: string) => new Date(at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
 const dash = (v: string | number | null) => (v === null || v === "" ? "-" : v);
 
@@ -81,16 +85,34 @@ function RawLog() {
           cell: (c) => {
             const when = whenText(c.getValue());
             return c.row.original.approximate ? (
-              <span className="flex flex-col whitespace-nowrap">
+              <span className="flex flex-col @3xl:whitespace-nowrap">
                 {when}
                 <span className="caption text-fg-3">Approximate</span>
               </span>
             ) : (
-              <span className="whitespace-nowrap">{when}</span>
+              <span className="@3xl:whitespace-nowrap">{when}</span>
             );
           },
         }),
-        col.accessor("habit", { header: "Habit", sortFn: "alphanumeric" }),
+        col.accessor("habit", {
+          header: "Habit",
+          sortFn: "alphanumeric",
+          cell: (c) => {
+            const e = c.row.original;
+            const details = [
+              e.context && `Place: ${e.context}`,
+              e.precededBy && `Cue: ${e.precededBy}`,
+              e.effort !== null && `Effort: ${e.effort}`,
+              (e.payoffNoticed !== null || e.payoffNote) && `Payoff: ${payoffText(e)}`,
+            ].filter(Boolean);
+            return (
+              <span className="flex flex-col">
+                {c.getValue()}
+                {details.length > 0 && <span className="caption text-fg-2 @3xl:hidden">{details.join(" · ")}</span>}
+              </span>
+            );
+          },
+        }),
         col.accessor("context", {
           header: "Place",
           enableSorting: false,
@@ -110,11 +132,7 @@ function RawLog() {
         col.accessor("payoffNoticed", {
           header: "Payoff",
           enableSorting: false,
-          cell: (c) => {
-            const v = c.getValue();
-            const note = c.row.original.payoffNote;
-            return `${v === null ? "-" : v ? "Yes" : "No"}${note ? `: ${note}` : ""}`;
-          },
+          cell: (c) => payoffText(c.row.original),
         }),
         col.display({
           id: "status",
@@ -150,13 +168,12 @@ function RawLog() {
   });
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 pt-4 pb-8 sm:px-6 sm:pt-8">
+    <main className="@container mx-auto w-full max-w-5xl px-4 pt-4 pb-8 sm:px-6 sm:pt-8">
       <h1 className="title-page">Raw log</h1>
       <div className="mt-6">
         <RangeFilter search={search} habits={log.habits} allowAll onChange={(s) => navigate({ search: s })} />
       </div>
-      {/* Wide enough on a phone that cells scroll sideways instead of wrapping word by word. */}
-      <Table className="mt-6 min-w-3xl">
+      <Table className="mt-6">
         <TableCaption>Logged events, {count(rows.length, "row")}</TableCaption>
         <TableHeader>
           {table.getHeaderGroups().map((group) => (
@@ -167,7 +184,7 @@ function RawLog() {
                   <TableHead
                     key={header.id}
                     scope="col"
-                    className={cn(NUMERIC.has(header.column.id) && "text-end")}
+                    className={cn(NUMERIC.has(header.column.id) && "text-end", FOLDED.has(header.column.id) && "@max-3xl:hidden")}
                     aria-sort={sorted === "asc" ? "ascending" : sorted === "desc" ? "descending" : undefined}
                   >
                     {header.column.getCanSort() ? (
@@ -190,7 +207,14 @@ function RawLog() {
           {table.getRowModel().rows.map((row) => (
             <TableRow key={row.id}>
               {row.getAllCells().map((cell) => (
-                <TableCell key={cell.id} className={cn(row.original.retracted && "text-fg-3", NUMERIC.has(cell.column.id) && "text-end")}>
+                <TableCell
+                  key={cell.id}
+                  className={cn(
+                    row.original.retracted && "text-fg-3",
+                    NUMERIC.has(cell.column.id) && "text-end",
+                    FOLDED.has(cell.column.id) && "@max-3xl:hidden",
+                  )}
+                >
                   <table.FlexRender cell={cell} />
                 </TableCell>
               ))}
