@@ -49,7 +49,7 @@ function SelectTrigger({className, size, placeholder, children, ...props}: Selec
   return (
     <SelectPrimitive.Trigger data-slot="select-trigger" className={mergeClass(triggerVariants({size}), className)} {...props}>
       {children ?? <SelectPrimitive.Value placeholder={placeholder} className="min-w-0 truncate data-placeholder:text-fg-3"/>}
-      <SelectPrimitive.Icon className="shrink-0 text-fg-3 transition-transform duration-(--dur-fast) group-data-popup-open/select-trigger:rotate-180"><Icon icon={ChevronDown} size={16}/></SelectPrimitive.Icon>
+      <SelectPrimitive.Icon className="shrink-0 text-fg-3 transition-transform duration-(--dur-fast) ease-out group-data-popup-open/select-trigger:rotate-180"><Icon icon={ChevronDown} size={16}/></SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
   );
 }

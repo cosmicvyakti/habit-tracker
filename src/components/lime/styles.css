@@ -199,6 +199,10 @@
 @theme inline reference {
   --*: initial;
 
+  /* A bare transition-* class reads these, so it never falls back to 0s or the browser's ease. */
+  --default-transition-duration: var(--dur-instant);
+  --default-transition-timing-function: var(--ease-out);
+
   --breakpoint-sm: 640px;
   --breakpoint-md: 768px;
   --breakpoint-lg: 1024px;

@@ -21,9 +21,9 @@ const PLACES = [
 // Link sets aria-current="page" on the row it matches.
 const HERE = "aria-[current=page]:bg-surface-2 aria-[current=page]:font-semibold aria-[current=page]:text-fg";
 // The sidebar's rows: the icon over its name, so the sidebar stands slim.
-const STACK = `flex w-full flex-col items-center gap-y-1 rounded-md py-2 text-xs text-fg-3 transition-colors hover:bg-surface-2 hover:text-fg active:bg-surface-2 ${HERE}`;
+const STACK = `flex w-full flex-col items-center gap-y-1 rounded-md py-2 text-xs text-fg-3 transition-colors duration-(--dur-instant) ease-out hover:bg-surface-2 hover:text-fg active:bg-surface-2 ${HERE}`;
 // The phone's rows: the icon beside its name, a finger's height.
-const ROW = `flex h-12 w-full items-center gap-x-4 rounded-md px-3 text-fg-2 transition-colors active:bg-surface-2 ${HERE}`;
+const ROW = `flex h-12 w-full items-center gap-x-4 rounded-md px-3 text-fg-2 transition-colors duration-(--dur-instant) ease-out active:bg-surface-2 ${HERE}`;
 
 function Place({ place, className, onClick }: { place: (typeof PLACES)[number]; className: string; onClick?: () => void }) {
   return (
@@ -88,7 +88,7 @@ export function TopBar() {
     <header
       ref={bar}
       data-scrolled={scrolled || undefined}
-      className="sticky inset-bs-0 z-10 border-be border-transparent bg-page transition-colors data-scrolled:border-line md:hidden"
+      className="sticky inset-bs-0 z-10 border-be border-transparent bg-page transition-colors duration-(--dur-fast) ease-out data-scrolled:border-line md:hidden"
     >
       <div className="relative flex h-14 items-center justify-between px-2">
         <Button variant="ghost" size="icon" aria-label="Open navigation" onClick={() => setOpen(true)}>

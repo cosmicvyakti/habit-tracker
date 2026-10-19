@@ -51,7 +51,7 @@ const rowClass = cn(
   'after:absolute after:inset-x-4 after:bottom-0 after:h-px after:bg-line group-last/item:after:hidden',
 );
 
-const pressable = 'cursor-pointer transition-colors duration-(--dur-instant) hover:bg-surface-2 active:bg-surface-3';
+const pressable = 'cursor-pointer transition-colors duration-(--dur-instant) ease-out hover:bg-surface-2 active:bg-surface-3';
 
 function ListItem({title, description, leading, trailing, chevron, href, onClick, disabled, menu, className, ...props}: ListItemProps) {
   const showChevron = chevron ?? Boolean(href);

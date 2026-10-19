@@ -25,7 +25,7 @@ function TableFooter({className, ...props}: React.ComponentProps<'tfoot'>) {
 }
 
 function TableRow({className, ...props}: React.ComponentProps<'tr'>) {
-  return <tr data-slot="table-row" className={cn('border-b border-line transition-colors duration-(--dur-instant) hover:bg-surface data-[state=selected]:bg-accent-wash', className)} {...props}/>;
+  return <tr data-slot="table-row" className={cn('border-b border-line transition-colors duration-(--dur-instant) ease-out hover:bg-surface data-[state=selected]:bg-accent-wash', className)} {...props}/>;
 }
 
 function TableHead({className, ...props}: React.ComponentProps<'th'>) {

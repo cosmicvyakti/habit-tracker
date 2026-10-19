@@ -70,7 +70,7 @@ function ToastViewport({contained}: {contained?: boolean}) {
   );
 }
 
-const inkButton = 'inline-flex h-(--control-sm) shrink-0 items-center justify-center rounded-control text-fg-inverse transition-colors duration-(--dur-instant) hover:bg-ink-hover active:bg-ink-active outline-fg-inverse focus-visible:-outline-offset-2';
+const inkButton = 'inline-flex h-(--control-sm) shrink-0 items-center justify-center rounded-control text-fg-inverse transition-colors duration-(--dur-instant) ease-out hover:bg-ink-hover active:bg-ink-active outline-fg-inverse focus-visible:-outline-offset-2';
 
 function ToastList() {
   const {toasts} = ToastPrimitive.useToastManager();

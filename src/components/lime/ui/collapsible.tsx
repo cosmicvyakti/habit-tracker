@@ -25,7 +25,7 @@ function CollapsibleTrigger({className, children, hideIcon, ...props}: Collapsib
       {...props}
     >
       {children}
-      {!hideIcon && <Icon icon={ChevronDown} size={16} className="text-fg-3 transition-transform duration-(--dur-fast) group-data-panel-open/collapsible-trigger:rotate-180 group-data-disabled/collapsible-trigger:text-fg-disabled"/>}
+      {!hideIcon && <Icon icon={ChevronDown} size={16} className="text-fg-3 transition-transform duration-(--dur-fast) ease-out group-data-panel-open/collapsible-trigger:rotate-180 group-data-disabled/collapsible-trigger:text-fg-disabled"/>}
     </CollapsiblePrimitive.Trigger>
   );
 }
