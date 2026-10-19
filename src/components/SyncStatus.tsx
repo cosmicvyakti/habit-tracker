@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
 import { useToast } from "@/components/lime/ui/toast";
 import { startSync, useSyncState } from "../data";
-import { count } from "./HabitCard";
+import { count } from "./HabitSheet";
 
 /** Runs the sync for the whole app and says when changes are waiting. Silent while sync keeps up. */
 export default function SyncStatus() {

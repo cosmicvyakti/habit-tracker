@@ -7,7 +7,7 @@ import { Empty, EmptyActions, EmptyDescription, EmptyTitle } from "@/components/
 import { List, ListItem } from "@/components/lime/ui/list";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/lime/ui/table";
 import CurveChart from "../components/CurveChart";
-import { count, MISS_BADGE, missText, pct, UNIT } from "../components/HabitCard";
+import { count, MISS_BADGE, missText, pct, UNIT } from "../components/HabitSheet";
 import RangeFilter from "../components/RangeFilter";
 import { logQuery, useLog } from "../data";
 import { countFrom, donePeriods, periodStats } from "../lib/consistency";

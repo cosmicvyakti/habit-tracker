@@ -15,7 +15,7 @@ import { Button } from "@/components/lime/ui/button";
 import { useToast } from "@/components/lime/ui/toast";
 import { clearDevice, useSyncState } from "../data";
 import { signOut } from "../server/api";
-import { count } from "./HabitCard";
+import { count } from "./HabitSheet";
 
 /**
  * Signs out and clears this device. Asks first when changes haven't synced, since signing out deletes them.

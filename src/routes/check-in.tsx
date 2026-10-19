@@ -5,7 +5,7 @@ import { Button } from "@/components/lime/ui/button";
 import { Empty, EmptyActions, EmptyDescription, EmptyTitle } from "@/components/lime/ui/empty";
 import { Radio, RadioGroup } from "@/components/lime/ui/radio";
 import { useToast } from "@/components/lime/ui/toast";
-import { title } from "../components/HabitCard";
+import { title } from "../components/HabitSheet";
 import { enqueue, logQuery, newId, now, useLog } from "../data";
 import { checksIn, SRBAI_ITEMS, SRBAI_MAX, SRBAI_MIN, srbaiScore } from "../lib/srbai";
 

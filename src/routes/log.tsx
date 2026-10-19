@@ -23,7 +23,7 @@ import { Badge } from "@/components/lime/ui/badge";
 import { Button } from "@/components/lime/ui/button";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/lime/ui/table";
 import { cn } from "@/lib/lime/utils";
-import { count, title } from "../components/HabitCard";
+import { count, title } from "../components/HabitSheet";
 import RangeFilter from "../components/RangeFilter";
 import { enqueue, logQuery, newId, now, useLog } from "../data";
 import { dayRange } from "../lib/dates";

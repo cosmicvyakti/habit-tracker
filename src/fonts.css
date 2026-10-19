@@ -2,3 +2,17 @@
 @import "@fontsource/hanken-grotesk/400.css";
 @import "@fontsource/hanken-grotesk/500.css";
 @import "@fontsource/hanken-grotesk/600.css";
+/* The serif for the lead sentence, below. */
+@import "@fontsource/newsreader/400.css";
+
+/* The one sentence a screen leads with, in a serif: the plan ("After I get out of bed, I will stretch…") on Today, the
+   answer on Insights. An extension of Lime, which has no serif; sizes and colors still come from its tokens. */
+.lead-sentence {
+  font-family: "Newsreader", Georgia, "Times New Roman", serif;
+  font-size: var(--text-xl);
+  font-weight: 400;
+  line-height: var(--leading-tight);
+  letter-spacing: -0.005em;
+  text-wrap: pretty;
+  color: var(--fg);
+}

@@ -6,7 +6,7 @@ import { Button } from "@/components/lime/ui/button";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/lime/ui/field";
 import { Input } from "@/components/lime/ui/input";
 import { Radio, RadioGroup } from "@/components/lime/ui/radio";
-import { where } from "../components/HabitCard";
+import { where } from "../components/HabitSheet";
 import { enqueue, logQuery, newId, now, useLog } from "../data";
 import { Frequency, FREQUENCIES, FREQUENCY_LABEL } from "../lib/dates";
 import type { Habit } from "../lib/model";

@@ -20,6 +20,15 @@ async function expectNoAxeViolations(page: Page) {
   expect(violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(", ")}`)).toEqual([]);
 }
 
+/** Opens a habit's sheet from Today: from Next up's details button, or from its row. */
+async function openSheet(page: Page, behavior: string) {
+  const title = behavior.charAt(0).toUpperCase() + behavior.slice(1);
+  await page.getByRole("button", { name: new RegExp(`^(See details for ${behavior}|${title}\\b)`) }).click();
+  const sheet = page.getByRole("dialog", { name: title, exact: true });
+  await expect(sheet).toBeVisible();
+  return sheet;
+}
+
 test("define a habit with an implementation intention", async ({ page }) => {
   await page.goto("/plan");
   await page.getByRole("button", { name: "Add habit" }).click();
@@ -34,32 +43,39 @@ test("define a habit with an implementation intention", async ({ page }) => {
   await page.getByRole("button", { name: "Add habit" }).click();
 
   await expect(page).toHaveURL("/");
-  const card = page.getByRole("listitem").filter({ hasText: "read 20 pages" });
-  await expect(card.getByText("After I pour my morning coffee, I will read 20 pages at the kitchen table.")).toBeVisible();
-  await expect(card.getByText("Weekly", { exact: true })).toBeVisible();
-  // Two habits, both still open this period: only the first one's Log is primary.
+  const row = page.getByRole("main").getByRole("listitem").filter({ hasText: "Read 20 pages" });
+  await expect(row.getByText("Weekly, not yet this week")).toBeVisible();
+  // The row opens the habit's sheet, which leads with the plan.
+  const sheet = await openSheet(page, "read 20 pages");
+  await expect(sheet.getByText("After I pour my morning coffee, I will read 20 pages at the kitchen table.")).toBeVisible();
+  await expect(sheet.getByText("Weekly", { exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(sheet).toBeHidden();
+  // Two habits, both still open: only the Next up habit's Log is primary.
   await expect(page.locator('main [data-slot="button"][data-variant="primary"]')).toHaveCount(1);
-  await expect(page.getByRole("main").getByRole("listitem").first().locator('[data-variant="primary"]')).toHaveCount(1);
+  await expect(page.getByRole("region", { name: "Next up" }).locator('[data-variant="primary"]')).toHaveCount(1);
 });
 
 test("log a habit in one tap, with the plan's place and cue", async ({ page }) => {
   await page.goto("/");
-  const card = page.getByRole("listitem").filter({ hasText: "read 20 pages" });
-  await card.getByRole("button", { name: /^Log( again)? read 20 pages$/ }).click();
+  const check = page.getByRole("button", { name: "Log read 20 pages this week" });
+  await check.click();
   await expect(page.getByText("Logged read 20 pages")).toBeVisible();
-  // The current week in the period row is now marked done.
-  const pressed = card.getByRole("toolbar").getByRole("button", { pressed: true });
-  await expect(pressed).toHaveCount(1);
+  await expect(check).toHaveAttribute("aria-pressed", "true");
+  // Logged today, it moves under Done today.
+  await expect(page.getByRole("region", { name: "Done today" }).getByText("Read 20 pages")).toBeVisible();
 
   // Undo on the toast retracts that log, then logging again marks the week done again.
   await page.getByRole("button", { name: "Undo" }).click();
   await expect(page.getByText("Removed that log of read 20 pages")).toBeVisible();
-  await expect(pressed).toHaveCount(0);
-  await card.getByRole("button", { name: /^Log( again)? read 20 pages$/ }).click();
-  await expect(pressed).toHaveCount(1);
+  await expect(check).toHaveAttribute("aria-pressed", "false");
+  await check.click();
+  await expect(check).toHaveAttribute("aria-pressed", "true");
 
-  await card.getByRole("button", { name: "More actions for read 20 pages" }).click();
-  await page.getByRole("menuitem", { name: "See log" }).click();
+  // The sheet's period row shows the current week done too.
+  const sheet = await openSheet(page, "read 20 pages");
+  await expect(sheet.getByRole("toolbar").getByRole("button", { pressed: true })).toHaveCount(1);
+  await sheet.getByRole("button", { name: "See log" }).click();
   await expect(page).toHaveURL(/\/log\?habit=/);
   const rows = page.getByRole("row").filter({ hasText: "read 20 pages" });
   // The undone log stays in the log, marked retracted.
@@ -102,8 +118,8 @@ test("retract a log only after confirming", async ({ page }) => {
 
 test("complete an SRBAI check-in", async ({ page }) => {
   await page.goto("/");
-  const card = page.getByRole("listitem").filter({ hasText: "read 20 pages" });
-  await card.getByRole("link", { name: "Check-in due for read 20 pages" }).click();
+  await openSheet(page, "read 20 pages");
+  await page.getByRole("link", { name: "Check in on automaticity for read 20 pages" }).click();
 
   await expect(page.getByText("Read 20 pages is something…")).toBeVisible();
   const answers = [3, 2, 4, 1];
@@ -119,12 +135,8 @@ test("complete an SRBAI check-in", async ({ page }) => {
   await expect(page.getByText("Saved check-in")).toBeVisible();
   await expect(page.getByText("Too early to tell. 1 of 5 check-ins so far.")).toBeVisible();
   await page.goto("/");
-  await expect(
-    page
-      .getByRole("listitem")
-      .filter({ hasText: "read 20 pages" })
-      .getByRole("link", { name: /^Check-in/ }),
-  ).toHaveCount(0);
+  await openSheet(page, "read 20 pages");
+  await expect(page.getByRole("link", { name: /^Check in on automaticity/ })).toHaveCount(0);
 });
 
 test("view the automaticity curve and plateau", async ({ page }) => {
@@ -184,7 +196,7 @@ test("first open on a new device with no connection says so, then loads when it 
   await page.unroute("**/_serverFn/**");
   await page.evaluate(() => window.dispatchEvent(new Event("online")));
   await expect(page.getByRole("heading", { name: "Today", level: 1 })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "stretch for 5 minutes" })).toBeVisible();
+  await expect(page.getByRole("main").getByText(/stretch for 5 minutes/i).first()).toBeVisible();
 });
 
 test("an unknown address shows a page, not a bare error", async ({ page }) => {
@@ -211,7 +223,7 @@ test("open the installed app with no connection", async ({ page, context }) => {
 
   await context.setOffline(true);
   await page.reload();
-  await expect(page.getByRole("heading", { name: "stretch for 5 minutes" })).toBeVisible();
+  await expect(page.getByRole("main").getByText(/stretch for 5 minutes/i).first()).toBeVisible();
   // A page not opened yet still loads: the worker cached every built file when it installed.
   await page.getByRole("link", { name: "Insights" }).click();
   await expect(page.getByRole("heading", { name: "Insights", level: 1 })).toBeVisible();
@@ -230,7 +242,7 @@ test("the installed app, offline with nothing saved, says it's offline and loads
 
   // The browser's own online event, not a tap, brings the data in.
   await context.setOffline(false);
-  await expect(page.getByRole("heading", { name: "stretch for 5 minutes" })).toBeVisible();
+  await expect(page.getByRole("main").getByText(/stretch for 5 minutes/i).first()).toBeVisible();
 });
 
 test("sign in again after the session ends, without losing a change", async ({ page, context }) => {
@@ -239,7 +251,8 @@ test("sign in again after the session ends, without losing a change", async ({ p
   await page.getByRole("link", { name: "Today" }).click();
 
   await context.clearCookies();
-  await page.getByRole("button", { name: /^Log( again)? stretch for 5 minutes$/ }).click();
+  // Already logged today, so it's logged again from its sheet.
+  await (await openSheet(page, "stretch for 5 minutes")).getByRole("button", { name: /^Log( again)? stretch for 5 minutes$/ }).click();
   const status = page.getByRole("status").filter({ hasText: "Signed out." });
   await expect(status).toContainText("1 change waiting to sync.");
 
@@ -410,8 +423,7 @@ test("archive every habit, then the empty states", async ({ page }) => {
   await page.goto("/");
   const cards = page.getByRole("main").getByRole("listitem");
   for (const name of ["stretch for 5 minutes", "read 20 pages"]) {
-    await page.getByRole("button", { name: `More actions for ${name}` }).click();
-    await page.getByRole("menuitem", { name: "Archive habit" }).click();
+    await (await openSheet(page, name)).getByRole("button", { name: "Archive habit" }).click();
     const dialog = page.getByRole("alertdialog", { name: `Archive ${name}?` });
     await expect(dialog.getByRole("button", { name: "Keep habit" })).toBeFocused();
     await expectNoAxeViolations(page);

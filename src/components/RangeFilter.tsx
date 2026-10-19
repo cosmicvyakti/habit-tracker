@@ -4,7 +4,7 @@ import { Input } from "@/components/lime/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/lime/ui/select";
 import type { Habit } from "../lib/model";
 import type { rangeSearchSchema } from "../lib/schema";
-import { title } from "./HabitCard";
+import { title } from "./HabitSheet";
 
 type RangeSearch = z.infer<typeof rangeSearchSchema>;
 
