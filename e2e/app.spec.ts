@@ -197,6 +197,8 @@ test("open the installed app with no connection", async ({ page, context }) => {
     "512x512 any",
     "512x512 maskable",
   ]);
+  // An installed app's navigation bar and launch screen take these, whatever the app's theme: pinned to dark.
+  expect([manifest.theme_color, manifest.background_color]).toEqual(["#0e0e0c", "#0e0e0c"]);
 
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Today", level: 1 })).toBeVisible();
@@ -308,17 +310,14 @@ test("the theme follows the system until the user picks one", async ({ page }) =
   const toggle = page.getByRole("button", { name: "Dark theme" });
   await expect(toggle).toHaveAttribute("aria-pressed", "true");
 
-  // A phone's bars match the page: the browser's through theme-color, an installed app's through the manifest.
+  // The phone's status bar matches the page.
   const barColor = page.locator('meta[name="theme-color"]');
-  const manifest = page.locator('link[rel="manifest"]');
   await expect(barColor).toHaveAttribute("content", "#0e0e0c");
-  await expect(manifest).toHaveAttribute("href", "/manifest-dark.webmanifest");
 
   await toggle.click();
   await expect(html).toHaveAttribute("data-theme", "light");
   await expect(toggle).toHaveAttribute("aria-pressed", "false");
   await expect(barColor).toHaveAttribute("content", "#ffffff");
-  await expect(manifest).toHaveAttribute("href", "/manifest.webmanifest");
   await page.reload();
   await expect(html).toHaveAttribute("data-theme", "light");
 });

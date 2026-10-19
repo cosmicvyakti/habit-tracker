@@ -7,7 +7,7 @@ import fonts from "../fonts.css?url";
 import { LimePortalProvider } from "@/lib/lime/portal";
 import { Sidebar, TopBar } from "../components/Navigation";
 import SyncStatus from "../components/SyncStatus";
-import ThemeToggle, { applyTheme, BARS, THEME_KEY } from "../components/ThemeToggle";
+import ThemeToggle, { applyTheme, BAR_COLOR, THEME_KEY } from "../components/ThemeToggle";
 import UpdateNotice from "../components/UpdateNotice";
 import { AutoMigrateV1 } from "../components/V1Import";
 import { signedIn } from "../data";
@@ -22,7 +22,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     links: [
       { rel: "stylesheet", href: fonts },
       { rel: "stylesheet", href: lime },
-      // The theme-color and manifest tags are THEME_SCRIPT's, set for the theme in use.
+      { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
       { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
     ],
@@ -52,7 +52,7 @@ function Shell({ children }: { children: ReactNode }) {
 }
 
 // Lime switches on data-theme and ignores the system setting, so the system setting is only the default.
-const THEME_SCRIPT = `try { (${applyTheme.toString()})(localStorage.getItem("${THEME_KEY}") ?? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"), ${JSON.stringify(BARS)}); } catch {}`;
+const THEME_SCRIPT = `try { (${applyTheme.toString()})(localStorage.getItem("${THEME_KEY}") ?? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"), ${JSON.stringify(BAR_COLOR)}); } catch {}`;
 
 function Root() {
   const { queryClient } = Route.useRouteContext();
