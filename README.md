@@ -51,7 +51,7 @@ The server stores data in SQLite at `data/habits.db`. To use a different file, s
 
 ### Offline and sync
 
-Every change is made in the browser first, with its own ID and the time it happened. It goes into a queue saved on the device, shows at once, and is sent to the server in order (`src/data.ts`). The browser also keeps the last log it got from the server, so the app opens without a connection. A service worker caches the app's files (`public/sw.js`).
+Every change is made in the browser first, with its own ID and the time it happened. It goes into a queue saved on the device, shows at once, and is sent to the server in order (`src/data.ts`). The browser also keeps the last log it got from the server, so the app opens without a connection. A service worker caches the app's files (`public/sw.js`). On a device that has never loaded the log, the app says it couldn't load your habits, and loads them as soon as the connection comes back.
 
 Sending a change twice adds nothing, so the queue can always retry. Logs, retractions, and check-ins are only ever added, so two devices never conflict over them. When two devices edit the same plan, the edit made last wins. Archiving keeps the first time.
 

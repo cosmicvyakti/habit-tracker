@@ -5,15 +5,17 @@ import { AUTH_FILE, EMAIL, PASSWORD } from "../playwright.config";
 test.describe.configure({ mode: "serial" });
 
 async function expectNoAxeViolations(page: Page) {
-  // A dialog fading in has see-through text, which axe measures as low contrast. Wait out every animation that ends.
-  await page.evaluate(() =>
-    Promise.all(
+  // A dialog fading in has see-through text, which axe measures as low contrast. Wait out every animation that ends,
+  // two frames on: Base UI starts a dialog's transition only on the frame after it opens.
+  await page.evaluate(async () => {
+    for (let i = 0; i < 2; i++) await new Promise(requestAnimationFrame);
+    await Promise.all(
       document
         .getAnimations()
         .filter((a) => a.effect?.getComputedTiming().endTime !== Infinity)
         .map((a) => a.finished.catch(() => {})),
-    ),
-  );
+    );
+  });
   const { violations } = await new AxeBuilder({ page }).analyze();
   expect(violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(", ")}`)).toEqual([]);
 }
@@ -158,6 +160,36 @@ test("log offline, then sync when the server answers again", async ({ page, brow
   await other.close();
 });
 
+test("first open on a new device with no connection says so, then loads when it can", async ({ page }) => {
+  // Each test starts signed in, with nothing saved on the device: a new phone, say.
+  await page.route("**/_serverFn/**", (route) => route.abort("internetdisconnected"));
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Couldn't load your habits", level: 1 })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "The server didn't answer" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Main" })).toBeVisible();
+  await expectNoAxeViolations(page);
+
+  // Try again with the server still unreachable leaves the message up and the button usable.
+  const retry = page.getByRole("button", { name: "Try again" });
+  await retry.click();
+  await expect(retry).toBeEnabled();
+  await expect(page.getByRole("heading", { name: "Couldn't load your habits", level: 1 })).toBeVisible();
+
+  // Back online: it loads without a tap.
+  await page.unroute("**/_serverFn/**");
+  await page.evaluate(() => window.dispatchEvent(new Event("online")));
+  await expect(page.getByRole("heading", { name: "Today", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "stretch for 5 minutes" })).toBeVisible();
+});
+
+test("an unknown address shows a page, not a bare error", async ({ page }) => {
+  await page.goto("/no-such-page");
+  await expect(page.getByRole("heading", { name: "Page not found", level: 1 })).toBeVisible();
+  await expectNoAxeViolations(page);
+  await page.getByRole("link", { name: "Go to Today" }).click();
+  await expect(page.getByRole("heading", { name: "Today", level: 1 })).toBeVisible();
+});
+
 test("open the installed app with no connection", async ({ page, context }) => {
   const manifest = await (await page.request.get("/manifest.webmanifest")).json();
   expect(manifest.icons.map((i: { sizes: string; purpose: string }) => `${i.sizes} ${i.purpose}`)).toEqual([
@@ -177,6 +209,21 @@ test("open the installed app with no connection", async ({ page, context }) => {
   await page.getByRole("link", { name: "Insights" }).click();
   await expect(page.getByRole("heading", { name: "Insights", level: 1 })).toBeVisible();
   await context.setOffline(false);
+});
+
+test("the installed app, offline with nothing saved, says it's offline and loads when the connection returns", async ({ page, context }) => {
+  await page.goto("/");
+  await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+  await page.evaluate(() => localStorage.removeItem("habit-tracker:log"));
+
+  await context.setOffline(true);
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Couldn't load your habits", level: 1 })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "You're offline" })).toBeVisible();
+
+  // The browser's own online event, not a tap, brings the data in.
+  await context.setOffline(false);
+  await expect(page.getByRole("heading", { name: "stretch for 5 minutes" })).toBeVisible();
 });
 
 test("sign in again after the session ends, without losing a change", async ({ page, context }) => {
