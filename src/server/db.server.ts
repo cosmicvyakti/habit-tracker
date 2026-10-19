@@ -1,5 +1,5 @@
 import Database from "better-sqlite3";
-import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import type { CheckIn, Habit, HabitEvent, Log } from "../lib/model";
@@ -165,14 +165,6 @@ export function applyOp(op: Op): void {
       return;
     }
   }
-}
-
-export function insertCheckIn(habitId: string, items: CheckIn["items"], at = new Date().toISOString()): CheckIn {
-  const c: CheckIn = { id: randomUUID(), habitId, at, items };
-  db()
-    .prepare("insert into check_ins (id, habit_id, at, item1, item2, item3, item4) values (?, ?, ?, ?, ?, ?, ?)")
-    .run(c.id, habitId, at, ...items);
-  return c;
 }
 
 /** Idempotent: habits and events that already exist are skipped, never overwritten. */

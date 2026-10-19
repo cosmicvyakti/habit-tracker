@@ -1,6 +1,6 @@
 // Fresh database for the e2e run: one habit with five SRBAI check-ins, so the curve has data.
 import { rmSync } from "node:fs";
-import { importData, insertCheckIn } from "../src/server/db.server.ts";
+import { applyOp, importData } from "../src/server/db.server.ts";
 
 const path = process.env.HABITS_DB;
 if (!path) throw new Error("Set HABITS_DB");
@@ -42,4 +42,4 @@ const scores: [number, number, number, number][] = [
   [6, 5, 5, 5],
   [6, 6, 5, 6],
 ];
-scores.forEach((items, i) => insertCheckIn("seed-stretch", items, at(i * 14)));
+scores.forEach((items, i) => applyOp({ kind: "checkIn", checkIn: { id: `seed-check-in-${i}`, habitId: "seed-stretch", at: at(i * 14), items } }));
