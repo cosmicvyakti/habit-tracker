@@ -9,6 +9,7 @@ import { signInSchema } from "../lib/session";
 import { signIn } from "../server/api";
 
 export const Route = createFileRoute("/sign-in")({
+  head: () => ({ meta: [{ title: "Sign in · Habit tracker" }] }),
   beforeLoad: async () => {
     if (await signedIn()) throw redirect({ to: "/" });
   },

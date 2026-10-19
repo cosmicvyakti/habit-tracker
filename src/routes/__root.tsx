@@ -1,10 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createRootRouteWithContext, HeadContent, Outlet, redirect, Scripts, useRouterState } from "@tanstack/react-router";
 import { ReactNode, Suspense } from "react";
+import { buttonVariants } from "@/components/lime/ui/button";
 import { ToastProvider } from "@/components/lime/ui/toast";
 import lime from "@/components/lime/styles.css?url";
 import fonts from "../fonts.css?url";
 import { LimePortalProvider } from "@/lib/lime/portal";
+import { cn } from "@/lib/lime/utils";
 import { Sidebar, TopBar } from "../components/Navigation";
 import SyncStatus from "../components/SyncStatus";
 import ThemeToggle, { applyTheme, BAR_COLOR, THEME_KEY } from "../components/ThemeToggle";
@@ -17,7 +19,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Habit Tracker" },
+      { title: "Habit tracker" },
     ],
     links: [
       { rel: "stylesheet", href: fonts },
@@ -78,6 +80,13 @@ function Root() {
               </>
             ) : (
               <div className="flex">
+                {/* The first stop for a keyboard, ahead of the sidebar's six; it slides into view only while focused. */}
+                <a
+                  href="#content"
+                  className={cn(buttonVariants(), "fixed! start-2 top-2 z-50 -translate-y-[200%] focus-visible:translate-y-0")}
+                >
+                  Skip to content
+                </a>
                 <Sidebar />
                 {/* On a phone the top bar says the page's title, so the page's own h1 stays for screen readers only, and
                     what came under it moves up to the bar. */}
@@ -86,9 +95,12 @@ function Root() {
                   <SyncStatus />
                   {/* Importing needs a session, so it waits until the user is past sign-in. */}
                   <AutoMigrateV1 />
-                  <Suspense fallback={null}>
-                    <Outlet />
-                  </Suspense>
+                  {/* The skip link's target: the next Tab after it lands on the page's first control. */}
+                  <div id="content">
+                    <Suspense fallback={null}>
+                      <Outlet />
+                    </Suspense>
+                  </div>
                 </div>
               </div>
             )}

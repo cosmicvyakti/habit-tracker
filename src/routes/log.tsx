@@ -31,6 +31,7 @@ import type { HabitEvent } from "../lib/model";
 import { rangeSearchSchema } from "../lib/schema";
 
 export const Route = createFileRoute("/log")({
+  head: () => ({ meta: [{ title: "Log · Habit tracker" }] }),
   validateSearch: rangeSearchSchema,
   loader: ({ context }) => context.queryClient.ensureQueryData(logQuery),
   component: RawLog,
@@ -51,8 +52,17 @@ const FOLDED = new Set(["context", "precededBy", "effort", "payoffNoticed"]);
 const payoffText = (e: { payoffNoticed: boolean | null; payoffNote: string | null }) =>
   `${e.payoffNoticed === null ? "-" : e.payoffNoticed ? "Yes" : "No"}${e.payoffNote ? `: ${e.payoffNote}` : ""}`;
 const whenText = (at: string) => new Date(at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+/** An approximate log has a day but no real time, so it shows the day alone. */
+const whenOf = (e: { at: string; approximate: boolean }) =>
+  e.approximate ? new Date(e.at).toLocaleDateString([], { dateStyle: "medium" }) : whenText(e.at);
 const monthText = (at: string) => new Date(at).toLocaleDateString([], { month: "long", year: "numeric" });
 const dash = (v: string | number | null) => (v === null || v === "" ? "-" : v);
+/** Why the table is empty, and only the ways out that apply. */
+function emptyText(anyLogs: boolean, search: { habit?: string; from?: string; to?: string }) {
+  if (!anyLogs) return "Nothing logged yet. Each log you make on Today shows up here.";
+  const ways = [(search.from || search.to) && "widen the dates", search.habit && "pick all habits"].filter(Boolean);
+  return ways.length ? `No logs match. Try to ${ways.join(" or ")}.` : "No logs match.";
+}
 
 function RawLog() {
   const search = Route.useSearch();
@@ -84,7 +94,7 @@ function RawLog() {
           header: "When",
           sortFn: "alphanumeric",
           cell: (c) => {
-            const when = whenText(c.getValue());
+            const when = whenOf(c.row.original);
             return c.row.original.approximate ? (
               <span className="flex flex-col @3xl:whitespace-nowrap">
                 {when}
@@ -145,7 +155,7 @@ function RawLog() {
               <Button
                 variant="link"
                 size="sm"
-                aria-label={`Retract ${c.row.original.habit} at ${whenText(c.row.original.at)}`}
+                aria-label={`Retract ${c.row.original.habit} at ${whenOf(c.row.original)}`}
                 onClick={() => {
                   setConfirming(c.row.original);
                   setConfirmOpen(true);
@@ -172,12 +182,12 @@ function RawLog() {
 
   return (
     <main className="@container mx-auto w-full max-w-5xl px-4 pt-4 pb-8 sm:px-6 sm:pt-8">
-      <h1 className="title-page">Raw log</h1>
+      <h1 className="title-page">Log</h1>
       <div className="mt-6">
         <RangeFilter search={search} habits={log.habits} allowAll onChange={(s) => navigate({ search: s })} />
       </div>
       <Table className="mt-6">
-        <TableCaption>Logged events, {count(rows.length, "row")}</TableCaption>
+        <TableCaption>{count(rows.length, "logged event")}</TableCaption>
         <TableHeader>
           {table.getHeaderGroups().map((group) => (
             <TableRow key={group.id}>
@@ -239,7 +249,7 @@ function RawLog() {
           })}
           {rows.length === 0 && (
             <TableRow>
-              <TableCell colSpan={columns.length}>No events in this range. Widen the dates or pick all habits.</TableCell>
+              <TableCell colSpan={columns.length}>{emptyText(log.events.length > 0, search)}</TableCell>
             </TableRow>
           )}
         </TableBody>
@@ -250,8 +260,8 @@ function RawLog() {
           <AlertDialogHeader>
             <AlertDialogTitle>Retract this log of {confirming?.habit}?</AlertDialogTitle>
             <AlertDialogDescription>
-              The {confirming ? whenText(confirming.at) : ""} event stays in the log, marked retracted, and stops counting toward
-              consistency. You can't undo this; log it again if it was a mistake.
+              The {confirming ? whenOf(confirming) : ""} event stays in the log, marked retracted, and stops counting toward consistency.
+              You can't undo this; log it again if it was a mistake.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

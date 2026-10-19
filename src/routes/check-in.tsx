@@ -10,6 +10,7 @@ import { enqueue, logQuery, newId, now, useLog } from "../data";
 import { checksIn, SRBAI_ITEMS, SRBAI_MAX, SRBAI_MIN, srbaiScore } from "../lib/srbai";
 
 export const Route = createFileRoute("/check-in")({
+  head: () => ({ meta: [{ title: "Automaticity check-in · Habit tracker" }] }),
   validateSearch: z.object({ habit: z.string().optional().catch(undefined) }),
   loader: ({ context }) => context.queryClient.ensureQueryData(logQuery),
   component: CheckInPage,
@@ -113,7 +114,7 @@ function CheckInPage() {
         <p className="body text-fg-2" aria-live="polite">
           {missing ? `Answer ${missing} more to see your score.` : `Score: ${srbaiScore(answers as number[]).toFixed(2)} out of 7`}
         </p>
-        <Button type="submit" size="lg" disabled={missing > 0} className="w-full sm:w-auto sm:self-start">
+        <Button type="submit" size="lg" disabled={missing > 0} focusableWhenDisabled className="w-full sm:w-auto sm:self-start">
           Save check-in
         </Button>
       </form>

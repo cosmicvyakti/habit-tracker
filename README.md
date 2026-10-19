@@ -16,7 +16,7 @@ The UI uses the [Lime design system](https://design.how/systems/lime) from desig
 - **Backfill** a past day, week, month, or year from the period row. Backfilled entries are marked approximate.
 - **SRBAI check-in** every 14 days per daily or weekly habit. Monthly and yearly habits are measured by consistency only.
 - **Insights** for a habit and a date range, both kept in the URL: the automaticity curve, the plateau estimate, consistency, effort and payoff, and context stability.
-- **Raw log** in a sortable table.
+- **Log** of every raw event, in a sortable table.
 - **Works offline.** Install it from the browser as an app. Logs, check-ins, and plan edits save on the device first and sync when the server answers.
 - **One account**, with an email and password.
 

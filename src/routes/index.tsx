@@ -8,6 +8,7 @@ import { periodKey } from "../lib/dates";
 import { activeEvents } from "../lib/model";
 
 export const Route = createFileRoute("/")({
+  head: () => ({ meta: [{ title: "Today · Habit tracker" }] }),
   loader: ({ context }) => context.queryClient.ensureQueryData(logQuery),
   component: Today,
 });
@@ -29,7 +30,7 @@ function Today() {
           <EmptyActions>
             {/* Base UI marks a non-button render as role="button"; these navigate, so they stay links. */}
             <Button nativeButton={false} role="link" render={<Link to="/plan" />}>
-              Define a habit
+              New habit
             </Button>
           </EmptyActions>
         </Empty>
@@ -47,7 +48,7 @@ function Today() {
             render={<Link to="/plan" />}
             className="mt-4"
           >
-            Add a habit
+            New habit
           </Button>
         </>
       )}

@@ -59,7 +59,7 @@ test("log a habit in one tap, with the plan's place and cue", async ({ page }) =
   await expect(pressed).toHaveCount(1);
 
   await card.getByRole("button", { name: "More actions for read 20 pages" }).click();
-  await page.getByRole("menuitem", { name: "See raw log" }).click();
+  await page.getByRole("menuitem", { name: "See log" }).click();
   await expect(page).toHaveURL(/\/log\?habit=/);
   const rows = page.getByRole("row").filter({ hasText: "read 20 pages" });
   // The undone log stays in the log, marked retracted.
@@ -138,10 +138,10 @@ test("view the automaticity curve and plateau", async ({ page }) => {
 });
 
 test("log offline, then sync when the server answers again", async ({ page, browser }) => {
-  const rows = (n: number) => page.getByText(`Logged events, ${n} rows`);
+  const rows = (n: number) => page.getByText(`${n} logged events`);
   await page.goto("/log?habit=seed-stretch");
   const caption = await page.locator("caption").textContent();
-  const before = Number(caption?.match(/(\d+) rows/)?.[1]);
+  const before = Number(caption?.match(/(\d+) logged events?/)?.[1]);
 
   // Every server call fails, as it does with no connection; the app's own files still load.
   await page.route("**/_serverFn/**", (route) => route.abort("internetdisconnected"));
@@ -161,7 +161,7 @@ test("log offline, then sync when the server answers again", async ({ page, brow
   // A fresh browser, with nothing saved on the device, sees it from the server.
   const other = await browser.newPage({ storageState: AUTH_FILE });
   await other.goto("/log?habit=seed-stretch");
-  await expect(other.getByText(`Logged events, ${before + 1} rows`)).toBeVisible();
+  await expect(other.getByText(`${before + 1} logged events`)).toBeVisible();
   await other.close();
 });
 
@@ -235,7 +235,7 @@ test("the installed app, offline with nothing saved, says it's offline and loads
 
 test("sign in again after the session ends, without losing a change", async ({ page, context }) => {
   await page.goto("/log?habit=seed-stretch");
-  const before = Number((await page.locator("caption").textContent())?.match(/(\d+) rows/)?.[1]);
+  const before = Number((await page.locator("caption").textContent())?.match(/(\d+) logged events?/)?.[1]);
   await page.getByRole("link", { name: "Today" }).click();
 
   await context.clearCookies();
@@ -251,7 +251,7 @@ test("sign in again after the session ends, without losing a change", async ({ p
   await expect(page.getByRole("status").filter({ hasText: "Signed out" })).toHaveCount(0);
 
   await page.goto("/log?habit=seed-stretch");
-  await expect(page.getByText(`Logged events, ${before + 1} rows`)).toBeVisible();
+  await expect(page.getByText(`${before + 1} logged events`)).toBeVisible();
 });
 
 test("too many wrong passwords lock sign-in for that address", async ({ browser }) => {

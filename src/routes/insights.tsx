@@ -20,6 +20,7 @@ import { checksIn, srbaiPoints } from "../lib/srbai";
 import { plannedCueShare, timeOfDaySpread } from "../lib/stability";
 
 export const Route = createFileRoute("/insights")({
+  head: () => ({ meta: [{ title: "Insights · Habit tracker" }] }),
   validateSearch: rangeSearchSchema,
   loader: ({ context }) => context.queryClient.ensureQueryData(logQuery),
   component: Insights,
@@ -46,7 +47,7 @@ function Insights() {
           <EmptyDescription>Define a habit and log it for a while; its curve and consistency show up here.</EmptyDescription>
           <EmptyActions>
             <Button nativeButton={false} role="link" render={<Link to="/plan" />}>
-              Define a habit
+              New habit
             </Button>
           </EmptyActions>
         </Empty>
@@ -175,12 +176,12 @@ function Insights() {
           <List>
             <ListItem
               title="Consistency rate"
-              description={stats.elapsed ? `${stats.done} of ${count(stats.elapsed, UNIT[f])}` : `Shows once this ${UNIT[f]} ends`}
+              description={stats.elapsed ? `${stats.done} of ${count(stats.elapsed, UNIT[f])}` : `Shows after this ${UNIT[f]}`}
               trailing={pct(stats.rate)}
             />
             <ListItem title="Never miss twice" trailing={<Badge variant={badge.variant}>{badge.label}</Badge>} />
             <ListItem title="Double misses in range" trailing={stats.doubleMisses} />
-            <ListItem title="Longest streak, for reference" trailing={count(longestStreak(done, f), UNIT[f])} />
+            <ListItem title="Longest streak" description="For reference" trailing={count(longestStreak(done, f), UNIT[f])} />
           </List>
           <p className="body text-fg">{missText(stats.state, f)}</p>
           <p className="body text-fg-2">
@@ -203,14 +204,14 @@ function Insights() {
             ) : (
               <ListItem
                 title="Average effort"
-                description="From 1 (none) to 5 (a lot)"
-                trailing={effort.all === null ? "No ratings yet" : effortText(effort.all)}
+                description="1 is none, 5 is a lot"
+                trailing={effort.all === null ? "Not yet" : effortText(effort.all)}
               />
             )}
             <ListItem
               title="Payoff noticed"
               description={payoff.answered ? `${payoff.yes} of ${count(payoff.answered, "log")} that answered` : undefined}
-              trailing={payoff.answered ? pct(payoff.yes / payoff.answered) : "No answers yet"}
+              trailing={payoff.answered ? pct(payoff.yes / payoff.answered) : "Not yet"}
             />
           </List>
           <p className="body text-fg-2">
@@ -227,9 +228,14 @@ function Insights() {
           <List>
             <ListItem
               title="Time-of-day spread"
-              trailing={spread === null ? "Needs 2 timed logs" : Number.isFinite(spread) ? `±${spread.toFixed(1)} h` : "Fully scattered"}
+              description={spread === null ? "Needs 2 timed logs" : undefined}
+              trailing={spread === null ? "Not yet" : Number.isFinite(spread) ? `±${spread.toFixed(1)} h` : "Fully scattered"}
             />
-            <ListItem title="After the planned cue" trailing={habit.cue ? pct(cueShare) : "No cue planned"} />
+            <ListItem
+              title="After the planned cue"
+              description={habit.cue ? undefined : "No cue in the plan"}
+              trailing={habit.cue ? pct(cueShare) : "None"}
+            />
             <ListItem
               title="Timed logs in range"
               description={inRange.length > exact.length ? `${inRange.length - exact.length} approximate left out` : undefined}

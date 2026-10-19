@@ -50,6 +50,8 @@ export function LoadError() {
 export function NotFound() {
   return (
     <main className="mx-auto w-full max-w-2xl px-4 pt-4 pb-8 sm:px-6 sm:pt-8">
+      {/* No route matched, so no route's head sets the title; React lifts this one into <head>. */}
+      <title>Page not found · Habit tracker</title>
       <h1 className="title-page">Page not found</h1>
       <Empty className="mt-8">
         <EmptyTitle aria-level={2}>Nothing is at this address</EmptyTitle>

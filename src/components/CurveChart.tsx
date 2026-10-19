@@ -50,13 +50,13 @@ export default function CurveChart({ points, fit }: { points: { t: number; y: nu
   const plateauX = fit?.plateauDay != null ? x(fit.plateauDay) : null;
 
   return (
-    <figure className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2">
       <div ref={ref}>
         <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-labelledby={`${id}-t ${id}-d`}>
           <title id={`${id}-t`}>Automaticity over time</title>
           <desc id={`${id}-d`}>
             {points.length} SRBAI check-ins on a 1 to 7 scale against days since the habit started
-            {fit ? `, with the fitted curve levelling off near ${fit.a.toFixed(1)}` : ""}.
+            {fit ? `, with the fitted curve leveling off near ${fit.a.toFixed(1)}` : ""}.
           </desc>
           {[1, 2, 3, 4, 5, 6, 7].map((v) => (
             <g key={v}>
@@ -103,7 +103,8 @@ export default function CurveChart({ points, fit }: { points: { t: number; y: nu
           })}
         </svg>
       </div>
-      <figcaption className="caption flex flex-wrap gap-4 text-fg-2">
+      {/* The legend is for the eye: the chart's own description says what each mark is. */}
+      <div className="caption flex flex-wrap gap-4 text-fg-2" aria-hidden="true">
         <span className="flex items-center gap-1.5">
           <span className="size-2.5 rounded-full bg-fg" aria-hidden="true" /> SRBAI check-in
         </span>
@@ -129,7 +130,7 @@ export default function CurveChart({ points, fit }: { points: { t: number; y: nu
             Projection
           </span>
         )}
-      </figcaption>
-    </figure>
+      </div>
+    </div>
   );
 }

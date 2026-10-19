@@ -65,7 +65,7 @@ export const MISS_BADGE = {
   "missed-twice": { variant: "danger", label: "Missed twice" },
 } as const;
 
-export const pct = (r: number | null) => (r === null ? "no data yet" : `${Math.round(r * 100)}%`);
+export const pct = (r: number | null) => (r === null ? "Not yet" : `${Math.round(r * 100)}%`);
 const EFFORT = ["1", "2", "3", "4", "5"] as const;
 const DAY_MS = 86_400_000;
 const text = (s: string) => s.trim() || null;
@@ -307,7 +307,7 @@ export default function HabitCard({ habit: h, log, lead }: { habit: Habit; log: 
                 {detailsOpen ? "Hide details for the next log" : "Add details to the next log"}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate({ to: "/insights", search: { habit: h.id } })}>See insights</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate({ to: "/log", search: { habit: h.id } })}>See raw log</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate({ to: "/log", search: { habit: h.id } })}>See log</DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate({ to: "/plan", search: { habit: h.id } })}>Edit plan</DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem destructive onClick={() => setArchiveOpen(true)}>
@@ -323,7 +323,7 @@ export default function HabitCard({ habit: h, log, lead }: { habit: Habit; log: 
           <AlertDialogHeader>
             <AlertDialogTitle>Archive {h.behavior}?</AlertDialogTitle>
             <AlertDialogDescription>
-              It leaves Today. Its log and check-ins stay, and you can still see them in Insights and the raw log.
+              It leaves Today. Its log and check-ins stay, and you can still see them in Insights and the log.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -5,7 +5,7 @@ import { z } from "zod";
 import { Button } from "@/components/lime/ui/button";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/lime/ui/field";
 import { Input } from "@/components/lime/ui/input";
-import { Segmented, SegmentedItem } from "@/components/lime/ui/segmented";
+import { Radio, RadioGroup } from "@/components/lime/ui/radio";
 import { where } from "../components/HabitCard";
 import { enqueue, logQuery, newId, now, useLog } from "../data";
 import { Frequency, FREQUENCIES, FREQUENCY_LABEL } from "../lib/dates";
@@ -14,6 +14,7 @@ import { Plan, planSchema } from "../lib/schema";
 
 export const Route = createFileRoute("/plan")({
   validateSearch: z.object({ habit: z.string().optional().catch(undefined) }),
+  head: ({ match }) => ({ meta: [{ title: `${match.search.habit ? "Edit plan" : "New habit"} · Habit tracker` }] }),
   loader: ({ context }) => context.queryClient.ensureQueryData(logQuery),
   component: PlanPage,
 });
@@ -54,7 +55,7 @@ function PlanForm({ habit }: { habit: Habit | undefined }) {
 
   return (
     <main className="mx-auto w-full max-w-md px-4 pt-4 pb-8 sm:px-6 sm:pt-8">
-      <h1 className="title-page">{habit ? "Edit plan" : "Define a habit"}</h1>
+      <h1 className="title-page">{habit ? "Edit plan" : "New habit"}</h1>
       <form
         ref={formRef}
         className="mt-8 flex flex-col gap-4"
@@ -93,18 +94,19 @@ function PlanForm({ habit }: { habit: Habit | undefined }) {
               <span id="frequency-label" className="label">
                 How often
               </span>
-              <Segmented
+              {/* Radios, as Effort is: four words don't fit a segmented track on a 320px phone, and these wrap. */}
+              <RadioGroup
                 aria-labelledby="frequency-label"
-                fill
                 value={field.state.value}
                 onValueChange={(v) => field.handleChange(v as Frequency)}
+                className="flex-row flex-wrap gap-x-6 gap-y-3"
               >
                 {FREQUENCIES.map((f) => (
-                  <SegmentedItem key={f} value={f}>
-                    {FREQUENCY_LABEL[f]}
-                  </SegmentedItem>
+                  <label key={f} className="body flex items-center gap-2">
+                    <Radio value={f} /> {FREQUENCY_LABEL[f]}
+                  </label>
                 ))}
-              </Segmented>
+              </RadioGroup>
             </div>
           )}
         </form.Field>
