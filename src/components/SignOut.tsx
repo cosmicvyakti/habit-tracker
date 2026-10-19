@@ -1,5 +1,7 @@
+import { Button as ButtonPrimitive } from "@base-ui/react/button";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { Icon, LogOut } from "@/components/lime/icon";
 import {
   AlertDialog,
   AlertDialogClose,
@@ -15,8 +17,11 @@ import { clearDevice, useSyncState } from "../data";
 import { signOut } from "../server/api";
 import { count } from "./HabitCard";
 
-/** Signs out and clears this device. Asks first when changes haven't synced, since signing out deletes them. */
-export default function SignOut() {
+/**
+ * Signs out and clears this device. Asks first when changes haven't synced, since signing out deletes them.
+ * Drawn as a navigation row, so the caller passes the row's classes.
+ */
+export default function SignOut({ className }: { className: string }) {
   const navigate = useNavigate();
   const toast = useToast();
   const { pending } = useSyncState();
@@ -40,9 +45,11 @@ export default function SignOut() {
 
   return (
     <>
-      <Button variant="ghost" size="sm" pending={busy && !open} onClick={() => (pending ? setOpen(true) : go())}>
+      {/* Base UI's own button, drawn as the navigation rows beside it: a Lime button's padding and type would set it apart. */}
+      <ButtonPrimitive className={className} disabled={busy && !open} onClick={() => (pending ? setOpen(true) : go())}>
+        <Icon icon={LogOut} size={20} />
         Sign out
-      </Button>
+      </ButtonPrimitive>
       <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

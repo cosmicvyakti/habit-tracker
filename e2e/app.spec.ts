@@ -39,7 +39,7 @@ test("define a habit with an implementation intention", async ({ page }) => {
   await expect(card.getByText("Weekly", { exact: true })).toBeVisible();
   // Two habits, both still open this period: only the first one's Log is primary.
   await expect(page.locator('main [data-slot="button"][data-variant="primary"]')).toHaveCount(1);
-  await expect(page.getByRole("listitem").first().locator('[data-variant="primary"]')).toHaveCount(1);
+  await expect(page.getByRole("main").getByRole("listitem").first().locator('[data-variant="primary"]')).toHaveCount(1);
 });
 
 test("log a habit in one tap, with the plan's place and cue", async ({ page }) => {
@@ -313,6 +313,22 @@ test("the theme follows the system until the user picks one", async ({ page }) =
   await expect(toggle).toHaveAttribute("aria-pressed", "false");
   await page.reload();
   await expect(html).toHaveAttribute("data-theme", "light");
+});
+
+test("on a phone, the menu opens every place over the page", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await expect(page.getByRole("complementary", { name: "Sidebar" })).toBeHidden();
+  const menu = page.getByRole("button", { name: "Open navigation" });
+  await menu.click();
+  const nav = page.getByRole("dialog", { name: "Navigation" });
+  await expect(nav.getByRole("link", { name: "Today" })).toHaveAttribute("aria-current", "page");
+  await expectNoAxeViolations(page);
+
+  await nav.getByRole("link", { name: "Insights" }).click();
+  await expect(page).toHaveURL(/\/insights/);
+  await expect(nav).toBeHidden();
+  await expect(menu).toBeFocused();
 });
 
 // Runs next to last: it archives every habit, which the tests above need.
