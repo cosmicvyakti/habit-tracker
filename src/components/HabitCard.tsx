@@ -30,11 +30,12 @@ import { donePeriods, MissState, periodStats } from "../lib/consistency";
 import { Frequency, FREQUENCY_LABEL, fromKey, longestStreak, periodKey } from "../lib/dates";
 import { activeEvents, Habit, HabitEvent, habitStart, Log } from "../lib/model";
 import { checkInDue } from "../lib/srbai";
-import RecentPeriods from "./RecentPeriods";
+import RecentPeriods, { describe } from "./RecentPeriods";
 
 export const UNIT: Record<Frequency, string> = { daily: "day", weekly: "week", monthly: "month", yearly: "year" };
 /** "1 week", "2 weeks". */
 export const count = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+const LAST: Record<Frequency, string> = { daily: "yesterday", weekly: "last week", monthly: "last month", yearly: "last year" };
 const THIS: Record<Frequency, string> = { daily: "today", weekly: "this week", monthly: "this month", yearly: "this year" };
 
 export function intention(h: Habit): string | null {
@@ -43,7 +44,7 @@ export function intention(h: Habit): string | null {
 
 export function missText(state: MissState, f: Frequency): string {
   const unit = UNIT[f];
-  if (state === "missed-once") return `Missed last ${unit}. Don't miss twice: do it ${THIS[f]}.`;
+  if (state === "missed-once") return `Missed ${LAST[f]}. Don't miss twice: do it ${THIS[f]}.`;
   if (state === "missed-twice") return `Missed 2 or more ${unit}s in a row. Pick it back up ${THIS[f]}.`;
   return "No double misses right now.";
 }
@@ -117,7 +118,20 @@ export default function HabitCard({ habit: h, log, lead }: { habit: Habit; log: 
 
   function togglePeriod(key: string) {
     const inPeriod = events.filter((e) => periodKey(new Date(e.at), f) === key);
-    if (inPeriod.length) return inPeriod.forEach((e) => retract(e.id));
+    if (inPeriod.length) {
+      inPeriod.forEach((e) => retract(e.id));
+      const n = inPeriod.length;
+      toast.show({
+        title: `Removed ${n === 1 ? "the log" : `${n} logs`} of ${h.behavior}`,
+        description: describe(fromKey(key), f).replace(/^./, (c) => c.toUpperCase()),
+        action: {
+          label: "Undo",
+          // The log is append-only, so Undo logs the same entries again under new ids.
+          onClick: () => inPeriod.forEach((e) => enqueue({ kind: "event", event: { ...e, id: newId() } })),
+        },
+      });
+      return;
+    }
     if (key === periodKey(today, f)) return logNow();
     // Backfill: the user knows it happened that period, not when or after what.
     const noon = fromKey(key);
