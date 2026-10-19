@@ -161,7 +161,7 @@
   --dur-base: 200ms; /* a popup or tab opening | popover, menu, tooltip */
   --dur-slow: 280ms; /* a dialog or sheet moving | dialog, sheet */
   --dur-spin: 900ms; /* one turn of the spinner, the only looping motion | spinner */
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1); /* the house curve | all transitions */
+  --ease-out: cubic-bezier(0.4, 0, 0.2, 1); /* the house curve, a fast start and a soft landing (retuned from Lime's 0.16, 1, 0.3, 1) | all transitions */
   --ease-in: cubic-bezier(0.4, 0, 1, 1); /* an element leaving | closing popups */
   --scale-enter: 0.97; /* a popup's starting scale | popover, menu, dialog */
   --scale-press: 0.98; /* a control's scale while pressed | button, balance, keypad key */
