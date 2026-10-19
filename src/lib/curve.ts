@@ -9,9 +9,16 @@ export interface CurveFit {
   c: number;
   /** Day the curve reaches 95% of `a`, or null when the data doesn't pin it down. */
   plateauDay: number | null;
+  /** Share of the scores' variance the curve explains, 0 to 1. */
+  r2: number;
 }
 
 export const MIN_POINTS = 3;
+// Before the app trusts a fit enough to draw it or name a plateau. The thresholds are the app's own; the rule follows
+// Lally et al. 2010, who reported no plateau for participants whose curves fitted poorly.
+export const TRUST_MIN_POINTS = 5;
+export const TRUST_MIN_SPAN_DAYS = 42;
+const TRUST_MIN_R2 = 0.7;
 const PLATEAU_SHARE = 0.95;
 // Rates outside this range mean the curve has no visible bend in a habit's lifetime.
 const C_MIN = 1e-3;
@@ -64,11 +71,24 @@ export function fitAutomaticity(points: { t: number; y: number }[]): CurveFit | 
     else left = m1;
   }
   const c = Math.exp((left + right) / 2);
-  const { a, b } = solveLinear(points, c)!;
+  const { a, b, sse: residual } = solveLinear(points, c)!;
+  const mean = points.reduce((s, p) => s + p.y, 0) / points.length;
+  const total = points.reduce((s, p) => s + (p.y - mean) ** 2, 0);
+  const r2 = total === 0 ? 1 : 1 - residual / total;
 
   const atBound = best === 0 || best === GRID - 1;
   const rising = a > 0 && b > 0;
   const plateauDay =
     atBound || !rising ? null : Math.max(0, Math.log(b / ((1 - PLATEAU_SHARE) * a)) / c);
-  return { a, b, c, plateauDay };
+  return { a, b, c, plateauDay, r2 };
+}
+
+export type Trust = "few-points" | "short-span" | "poor-fit" | "trusted";
+
+/** Whether a fit has enough check-ins, over enough time, fitting well enough to show. */
+export function trustFit(fit: CurveFit | null, points: { t: number }[]): Trust {
+  if (points.length < TRUST_MIN_POINTS || !fit) return "few-points";
+  const ts = points.map((p) => p.t);
+  if (Math.max(...ts) - Math.min(...ts) < TRUST_MIN_SPAN_DAYS) return "short-span";
+  return fit.r2 < TRUST_MIN_R2 ? "poor-fit" : "trusted";
 }

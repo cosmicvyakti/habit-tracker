@@ -10,12 +10,13 @@ import CurveChart from "../components/CurveChart";
 import { count, MISS_BADGE, missText, pct, UNIT } from "../components/HabitCard";
 import RangeFilter from "../components/RangeFilter";
 import { logQuery, useLog } from "../data";
-import { donePeriods, periodStats } from "../lib/consistency";
-import { fitAutomaticity, MIN_POINTS } from "../lib/curve";
-import { addDays, dayRange, longestStreak } from "../lib/dates";
+import { countFrom, donePeriods, periodStats } from "../lib/consistency";
+import { fitAutomaticity, TRUST_MIN_POINTS, TRUST_MIN_SPAN_DAYS, trustFit } from "../lib/curve";
+import { addDays, dayRange, FREQUENCY_LABEL, longestStreak } from "../lib/dates";
+import { EFFORT_WINDOW_DAYS, effortTrend, payoffNoticed } from "../lib/effort";
 import { activeEvents, habitStart } from "../lib/model";
 import { rangeSearchSchema } from "../lib/schema";
-import { srbaiPoints } from "../lib/srbai";
+import { checksIn, srbaiPoints } from "../lib/srbai";
 import { plannedCueShare, timeOfDaySpread } from "../lib/stability";
 
 export const Route = createFileRoute("/insights")({
@@ -25,6 +26,9 @@ export const Route = createFileRoute("/insights")({
 });
 
 const SHELL = "mx-auto w-full max-w-2xl px-4 pt-4 pb-8 sm:px-6 sm:pt-8";
+/** "Jan 6, 2027": the month in words, so the date reads the same in every locale. */
+const dateText = (d: Date) => d.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+const effortText = (n: number | null) => (n === null ? "-" : n.toFixed(1));
 
 function Insights() {
   const search = Route.useSearch();
@@ -56,7 +60,8 @@ function Insights() {
   const range = dayRange(search.from, search.to, start, today);
   const inRange = events.filter((e) => range.contains(e.at));
   const done = donePeriods(events, f);
-  const stats = periodStats(done, f, range.from > start ? range.from : start, range.to, today);
+  const first = countFrom(start, done, f);
+  const stats = periodStats(done, f, range.from > first ? range.from : first, range.to, today);
   const exact = inRange.filter((e) => !e.approximate);
   const spread = timeOfDaySpread(inRange);
   const cueShare = plannedCueShare(inRange, habit.cue);
@@ -66,6 +71,11 @@ function Insights() {
   const checkIns = log.checkIns.filter((c) => c.habitId === habit.id).sort((a, b) => a.at.localeCompare(b.at));
   const points = srbaiPoints(checkIns, start);
   const fit = fitAutomaticity(points);
+  const trust = trustFit(fit, points);
+  const lastT = points.length ? points[points.length - 1].t : 0;
+  const span = points.length ? Math.round(lastT - points[0].t) : 0;
+  const effort = effortTrend(inRange, range.from, addDays(range.to, 1));
+  const payoff = payoffNoticed(inRange);
 
   return (
     <main className={SHELL}>
@@ -79,58 +89,83 @@ function Insights() {
           <h2 id="automaticity" className="text-lg font-semibold">
             Automaticity
           </h2>
-          <CurveChart points={points} fit={fit} />
-          {points.length < MIN_POINTS ? (
-            <p className="body text-fg">
-              {points.length} of {MIN_POINTS} check-ins so far. The curve appears after {MIN_POINTS}.{" "}
-              <Link to="/check-in" search={{ habit: habit.id }} className="underline underline-offset-4">
-                Check in now
-              </Link>
-            </p>
-          ) : fit?.plateauDay != null ? (
-            <p className="body text-fg">
-              Estimated plateau: <span className="font-semibold">{addDays(start, Math.round(fit.plateauDay)).toLocaleDateString()}</span> (day{" "}
-              {Math.round(fit.plateauDay)}). Automaticity levels off near <span className="font-semibold">{fit.a.toFixed(1)}</span> out of 7.
-            </p>
+          {checksIn(f) ? (
+            <>
+              <CurveChart points={points} fit={trust === "trusted" ? fit : null} />
+              {trust !== "trusted" ? (
+                <p className="body text-fg">
+                  {trust === "few-points"
+                    ? `Too early to tell. ${points.length} of ${TRUST_MIN_POINTS} check-ins so far.`
+                    : trust === "short-span"
+                      ? `Too early to tell. The check-ins cover ${count(span, "day")}, and the curve needs ${TRUST_MIN_SPAN_DAYS}.`
+                      : "The scores move around too much for a curve yet. It shows once they settle."}{" "}
+                  <Link to="/check-in" search={{ habit: habit.id }} className="underline underline-offset-4">
+                    Check in now
+                  </Link>
+                </p>
+              ) : fit?.plateauDay != null && fit.plateauDay <= lastT ? (
+                <p className="body text-fg">
+                  Leveled off around <span className="font-semibold">{dateText(addDays(start, Math.round(fit.plateauDay)))}</span> (day{" "}
+                  {Math.round(fit.plateauDay)}), near <span className="font-semibold">{fit.a.toFixed(1)}</span> out of 7.
+                </p>
+              ) : fit?.plateauDay != null ? (
+                <p className="body text-fg">
+                  Projected to level off around{" "}
+                  <span className="font-semibold">
+                    {addDays(start, Math.round(fit.plateauDay)).toLocaleDateString([], { month: "short", year: "numeric" })}
+                  </span>
+                  , {count(Math.round(fit.plateauDay - lastT), "day")} after your last check-in, near{" "}
+                  <span className="font-semibold">{fit.a.toFixed(1)}</span> out of 7. The dashed line is the projection.
+                </p>
+              ) : (
+                <p className="body text-fg">
+                  The scores haven't started to level off, so there is no plateau estimate yet. Keep checking in.
+                </p>
+              )}
+              {checkIns.length > 0 && (
+                <Collapsible>
+                  <CollapsibleTrigger>Check-in data</CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <Table>
+                      <TableCaption>SRBAI check-ins for {habit.behavior}</TableCaption>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead scope="col">Date</TableHead>
+                          <TableHead scope="col" className="text-end">
+                            Day
+                          </TableHead>
+                          <TableHead scope="col">Items</TableHead>
+                          <TableHead scope="col" className="text-end">
+                            Score
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {checkIns.map((c, i) => (
+                          <TableRow key={c.id}>
+                            <TableCell>{dateText(new Date(c.at))}</TableCell>
+                            <TableCell className="text-end">{Math.round(points[i].t)}</TableCell>
+                            <TableCell>{c.items.join(", ")}</TableCell>
+                            <TableCell className="text-end">{points[i].y.toFixed(2)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
+              <p className="body text-fg-2">
+                Scores use the SRBAI from Gardner et al. 2012. The curve A(t) = a - b·e^(-ct) and the 95% plateau follow Lally et al. 2010.
+                The curve shows once {TRUST_MIN_POINTS} check-ins over {TRUST_MIN_SPAN_DAYS} days fit it well, and it uses every check-in,
+                whatever the date range.
+              </p>
+            </>
           ) : (
-            <p className="body text-fg">The scores haven't started to level off, so there is no plateau estimate yet. Keep checking in.</p>
+            <p className="body text-fg">
+              Check-ins and the automaticity curve are for daily and weekly habits. The research behind them followed behaviors done daily,
+              so a {FREQUENCY_LABEL[f].toLowerCase()} habit is measured by consistency instead. Lally et al. 2010.
+            </p>
           )}
-          {checkIns.length > 0 && (
-            <Collapsible>
-              <CollapsibleTrigger>Check-in data</CollapsibleTrigger>
-              <CollapsibleContent>
-                <Table>
-                  <TableCaption>SRBAI check-ins for {habit.behavior}</TableCaption>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead scope="col">Date</TableHead>
-                      <TableHead scope="col" className="text-end">
-                        Day
-                      </TableHead>
-                      <TableHead scope="col">Items</TableHead>
-                      <TableHead scope="col" className="text-end">
-                        Score
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {checkIns.map((c, i) => (
-                      <TableRow key={c.id}>
-                        <TableCell>{new Date(c.at).toLocaleDateString()}</TableCell>
-                        <TableCell className="text-end">{Math.round(points[i].t)}</TableCell>
-                        <TableCell>{c.items.join(", ")}</TableCell>
-                        <TableCell className="text-end">{points[i].y.toFixed(2)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CollapsibleContent>
-            </Collapsible>
-          )}
-          <p className="body text-fg-2">
-            Scores use the SRBAI from Gardner et al. 2012. The curve A(t) = a - b·e^(-ct) and the 95% plateau follow Lally et al.
-            2010. The curve uses every check-in, whatever the date range.
-          </p>
         </section>
 
         <section className="flex flex-col gap-3" aria-labelledby="consistency">
@@ -138,14 +173,50 @@ function Insights() {
             Consistency
           </h2>
           <List>
-            <ListItem title="Consistency rate" description={`${stats.done} of ${count(stats.elapsed, UNIT[f])}`} trailing={pct(stats.rate)} />
+            <ListItem
+              title="Consistency rate"
+              description={stats.elapsed ? `${stats.done} of ${count(stats.elapsed, UNIT[f])}` : `Shows once this ${UNIT[f]} ends`}
+              trailing={pct(stats.rate)}
+            />
             <ListItem title="Never miss twice" trailing={<Badge variant={badge.variant}>{badge.label}</Badge>} />
             <ListItem title="Double misses in range" trailing={stats.doubleMisses} />
             <ListItem title="Longest streak, for reference" trailing={count(longestStreak(done, f), UNIT[f])} />
           </List>
           <p className="body text-fg">{missText(stats.state, f)}</p>
           <p className="body text-fg-2">
-            Missing once did not set back habit formation, so consistency counts for more than streaks. Lally et al. 2010.
+            Missing once didn&rsquo;t set back habit formation (Lally et al. 2010), so this app counts consistency instead of streaks.
+            &ldquo;Never miss twice&rdquo; is from Clear 2018.
+          </p>
+        </section>
+
+        <section className="flex flex-col gap-3" aria-labelledby="effort">
+          <h2 id="effort" className="text-lg font-semibold">
+            Effort and payoff
+          </h2>
+          <List>
+            {effort.first !== null && effort.last !== null ? (
+              <ListItem
+                title="Effort"
+                description={`First ${EFFORT_WINDOW_DAYS / 7} weeks, then last ${EFFORT_WINDOW_DAYS / 7}`}
+                trailing={`${effortText(effort.first)} → ${effortText(effort.last)}`}
+              />
+            ) : (
+              <ListItem
+                title="Average effort"
+                description="From 1 (none) to 5 (a lot)"
+                trailing={effort.all === null ? "No ratings yet" : effortText(effort.all)}
+              />
+            )}
+            <ListItem
+              title="Payoff noticed"
+              description={payoff.answered ? `${payoff.yes} of ${count(payoff.answered, "log")} that answered` : undefined}
+              trailing={payoff.answered ? pct(payoff.yes / payoff.answered) : "No answers yet"}
+            />
+          </List>
+          <p className="body text-fg-2">
+            Both come from the details you add to a log. Effort should fall as the habit becomes automatic; it&rsquo;s this app&rsquo;s
+            stand-in between check-ins, not a measure from Lally et al. 2010. Noticing the payoff is the reinforcement that keeps a behavior
+            going. Skinner 1938.
           </p>
         </section>
 

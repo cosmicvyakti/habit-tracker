@@ -14,8 +14,8 @@ The UI uses the [Lime design system](https://design.how/systems/lime) from desig
 - **Log in one tap.** Place and cue come from the plan. You can edit them, and add effort (1-5) and whether you noticed the payoff, before you tap.
 - **Undo** a mis-tap or retract any entry after confirming. A retraction is a new event, so nothing in the log is ever edited or deleted.
 - **Backfill** a past day, week, month, or year from the period row. Backfilled entries are marked approximate.
-- **SRBAI check-in** every 14 days per habit.
-- **Insights** for a habit and a date range, both kept in the URL: the automaticity curve, the plateau estimate, consistency, and context stability.
+- **SRBAI check-in** every 14 days per daily or weekly habit. Monthly and yearly habits are measured by consistency only.
+- **Insights** for a habit and a date range, both kept in the URL: the automaticity curve, the plateau estimate, consistency, effort and payoff, and context stability.
 - **Raw log** in a sortable table.
 - **Works offline.** Install it from the browser as an app. Logs, check-ins, and plan edits save on the device first and sync when the server answers.
 - **One account**, with an email and password.
@@ -29,16 +29,17 @@ The UI uses the [Lime design system](https://design.how/systems/lime) from desig
 | `precededBy`: the cue that came before each event | Wood & Neal 2007 |
 | Consequence (expected payoff, optional in the plan) and `payoffNoticed` | Skinner 1938 |
 | Event timestamps and the habit's start date (day 0) | Lally et al. 2010 |
-| Effort, 1-5, as a proxy for automaticity between check-ins | Lally et al. 2010 (a proxy, not a measure from the paper) |
+| Effort, 1-5, as a proxy for automaticity between check-ins; Insights compares the first 4 weeks of the range with the last 4 | Lally et al. 2010 (a proxy, not a measure from the paper) |
 | SRBAI score: the mean of 4 items on a 1-7 scale | Gardner et al. 2012 |
 | Curve `A(t) = a - b·e^(-ct)` and the plateau, the day the curve reaches 95% of `a` | Lally et al. 2010 |
-| Consistency rate and "never miss twice", which replace the reset-to-zero streak | Lally et al. 2010: one missed opportunity did not materially affect habit formation |
+| Consistency rate and "never miss twice", which replace the reset-to-zero streak | Lally et al. 2010: one missed opportunity did not materially affect habit formation. The "never miss twice" wording is from Clear 2018 |
 | Time-of-day spread (circular standard deviation, in hours) and the share of events after the planned cue | Wood & Neal 2007; Lally et al. 2010 |
 
-The curve needs at least 3 check-ins. When the scores show no bend yet, the app shows no plateau date instead of a guess. Time-of-day spread and cue share leave out approximate events, because their times and cues were reconstructed rather than recorded.
+The curve and the plateau show once there are at least 5 check-ins over 42 days and the curve explains at least 70% of their variance. Lally et al. reported no plateau for curves that fitted poorly; these thresholds are the app's own. Until then, Insights says it's too early to tell. A plateau after the last check-in is a projection: the curve is dashed there, and Insights gives the month rather than a day. When the scores show no bend yet, the app shows no plateau date instead of a guess. Time-of-day spread and cue share leave out approximate events, because their times and cues were reconstructed rather than recorded.
 
 ### References
 
+- Clear, J. (2018). *Atomic Habits: An Easy & Proven Way to Build Good Habits & Break Bad Ones.* Avery.
 - Gardner, B., Abraham, C., Lally, P., & de Bruijn, G.-J. (2012). Towards parsimony in habit measurement: Testing the convergent and predictive validity of an automaticity subscale of the Self-Report Habit Index. *International Journal of Behavioral Nutrition and Physical Activity, 9*, 102.
 - Gollwitzer, P. M. (1999). Implementation intentions: Strong effects of simple plans. *American Psychologist, 54*(7), 493-503.
 - Lally, P., van Jaarsveld, C. H. M., Potts, H. W. W., & Wardle, J. (2010). How are habits formed: Modelling habit formation in the real world. *European Journal of Social Psychology, 40*(6), 998-1009.

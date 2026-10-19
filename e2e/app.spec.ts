@@ -28,7 +28,7 @@ test("define a habit with an implementation intention", async ({ page }) => {
 
   await page.getByLabel("After (cue)").fill("I pour my morning coffee");
   await page.getByLabel("I will (behavior)").fill("read 20 pages");
-  await page.getByLabel("At (place)").fill("the kitchen table");
+  await page.getByLabel("Where").fill("the kitchen table");
   await page.getByRole("radio", { name: "Weekly" }).click();
   await expect(page.getByText("After I pour my morning coffee, I will read 20 pages at the kitchen table.")).toBeVisible();
   await page.getByRole("button", { name: "Add habit" }).click();
@@ -103,9 +103,9 @@ test("retract a log only after confirming", async ({ page }) => {
 test("complete an SRBAI check-in", async ({ page }) => {
   await page.goto("/");
   const card = page.getByRole("listitem").filter({ hasText: "read 20 pages" });
-  await card.getByRole("link", { name: "Check in on automaticity" }).click();
+  await card.getByRole("link", { name: "Check-in due for read 20 pages" }).click();
 
-  await expect(page.getByText("read 20 pages is something…")).toBeVisible();
+  await expect(page.getByText("Read 20 pages is something…")).toBeVisible();
   const answers = [3, 2, 4, 1];
   const items = ["I do automatically.", "I do without having to consciously remember.", "I do without thinking.", "I start doing before I realize I'm doing it."];
   for (const [i, item] of items.entries()) {
@@ -116,20 +116,25 @@ test("complete an SRBAI check-in", async ({ page }) => {
   await page.getByRole("button", { name: "Save check-in" }).click();
 
   await expect(page).toHaveURL(/\/insights\?habit=/);
-  await expect(page.getByText("1 of 3 check-ins so far.")).toBeVisible();
+  await expect(page.getByText("Saved check-in")).toBeVisible();
+  await expect(page.getByText("Too early to tell. 1 of 5 check-ins so far.")).toBeVisible();
   await page.goto("/");
-  await expect(page.getByRole("listitem").filter({ hasText: "read 20 pages" }).getByRole("link", { name: "Check in on automaticity" })).toHaveCount(0);
+  await expect(
+    page
+      .getByRole("listitem")
+      .filter({ hasText: "read 20 pages" })
+      .getByRole("link", { name: /^Check-in/ }),
+  ).toHaveCount(0);
 });
 
 test("view the automaticity curve and plateau", async ({ page }) => {
   await page.goto("/insights?habit=seed-stretch");
   const chart = page.getByRole("img", { name: /Automaticity over time/ });
   await expect(chart).toBeVisible();
-  // Every circle is a check-in and the only path is the fitted curve.
+  // Every circle is a check-in; the two paths are the fitted curve and its dashed projection past the last check-in.
   await expect(chart.locator("circle")).toHaveCount(5);
-  await expect(chart.locator("path")).toHaveCount(1);
-  await expect(page.getByText(/Estimated plateau:/)).toBeVisible();
-  await expect(page.getByText(/Automaticity levels off near/)).toBeVisible();
+  await expect(chart.locator("path")).toHaveCount(2);
+  await expect(page.getByText(/(Projected to level off|Leveled off) around .* out of 7\./)).toBeVisible();
 });
 
 test("log offline, then sync when the server answers again", async ({ page, browser }) => {

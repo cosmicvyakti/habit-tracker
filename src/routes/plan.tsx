@@ -6,6 +6,7 @@ import { Button } from "@/components/lime/ui/button";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/lime/ui/field";
 import { Input } from "@/components/lime/ui/input";
 import { Segmented, SegmentedItem } from "@/components/lime/ui/segmented";
+import { where } from "../components/HabitCard";
 import { enqueue, logQuery, newId, now, useLog } from "../data";
 import { Frequency, FREQUENCIES, FREQUENCY_LABEL } from "../lib/dates";
 import type { Habit } from "../lib/model";
@@ -20,7 +21,7 @@ export const Route = createFileRoute("/plan")({
 const FIELDS = [
   { name: "cue", label: "After (cue)", hint: "Something that already happens every time.", example: "I pour my morning coffee" },
   { name: "behavior", label: "I will (behavior)", hint: "Small and concrete.", example: "read 20 pages" },
-  { name: "context", label: "At (place)", hint: "Where you will be.", example: "the kitchen table" },
+  { name: "context", label: "Where", hint: "Where you will be, such as at your desk or in the kitchen.", example: "at the kitchen table" },
   { name: "consequence", label: "So that (payoff, optional)", hint: "What you get from it.", example: "I start the day calm" },
 ] as const;
 
@@ -110,7 +111,7 @@ function PlanForm({ habit }: { habit: Habit | undefined }) {
         <form.Subscribe selector={(s) => s.values}>
           {(v) => (
             <p className="body text-fg-2" aria-live="polite">
-              After {v.cue || "[cue]"}, I will {v.behavior || "[behavior]"} at {v.context || "[place]"}.
+              After {v.cue || "[cue]"}, I will {v.behavior || "[behavior]"} {v.context.trim() ? where(v.context) : "[where]"}.
             </p>
           )}
         </form.Subscribe>

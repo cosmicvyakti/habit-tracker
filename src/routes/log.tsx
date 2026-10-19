@@ -8,7 +8,7 @@ import {
   useTable,
 } from "@tanstack/react-table";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, ChevronSort, Icon } from "@/components/lime/icon";
 import {
   AlertDialog,
@@ -23,7 +23,7 @@ import { Badge } from "@/components/lime/ui/badge";
 import { Button } from "@/components/lime/ui/button";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/lime/ui/table";
 import { cn } from "@/lib/lime/utils";
-import { count } from "../components/HabitCard";
+import { count, title } from "../components/HabitCard";
 import RangeFilter from "../components/RangeFilter";
 import { enqueue, logQuery, newId, now, useLog } from "../data";
 import { dayRange } from "../lib/dates";
@@ -51,6 +51,7 @@ const FOLDED = new Set(["context", "precededBy", "effort", "payoffNoticed"]);
 const payoffText = (e: { payoffNoticed: boolean | null; payoffNote: string | null }) =>
   `${e.payoffNoticed === null ? "-" : e.payoffNoticed ? "Yes" : "No"}${e.payoffNote ? `: ${e.payoffNote}` : ""}`;
 const whenText = (at: string) => new Date(at).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+const monthText = (at: string) => new Date(at).toLocaleDateString([], { month: "long", year: "numeric" });
 const dash = (v: string | number | null) => (v === null || v === "" ? "-" : v);
 
 function RawLog() {
@@ -107,7 +108,7 @@ function RawLog() {
             ].filter(Boolean);
             return (
               <span className="flex flex-col">
-                {c.getValue()}
+                {title(c.getValue())}
                 {details.length > 0 && <span className="caption text-fg-2 @3xl:hidden">{details.join(" · ")}</span>}
               </span>
             );
@@ -135,8 +136,8 @@ function RawLog() {
           cell: (c) => payoffText(c.row.original),
         }),
         col.display({
-          id: "status",
-          header: "Status",
+          id: "action",
+          header: "Action",
           cell: (c) =>
             c.row.original.retracted ? (
               <Badge variant="outline">Retracted</Badge>
@@ -166,6 +167,8 @@ function RawLog() {
     enableSortingRemoval: false,
     initialState: { sorting: [{ id: "at", desc: true }] },
   });
+
+  const byTime = Boolean(table.getColumn("at")?.getIsSorted());
 
   return (
     <main className="@container mx-auto w-full max-w-5xl px-4 pt-4 pb-8 sm:px-6 sm:pt-8">
@@ -204,22 +207,36 @@ function RawLog() {
           ))}
         </TableHeader>
         <TableBody>
-          {table.getRowModel().rows.map((row) => (
-            <TableRow key={row.id}>
-              {row.getAllCells().map((cell) => (
-                <TableCell
-                  key={cell.id}
-                  className={cn(
-                    row.original.retracted && "text-fg-3",
-                    NUMERIC.has(cell.column.id) && "text-end",
-                    FOLDED.has(cell.column.id) && "@max-3xl:hidden",
-                  )}
-                >
-                  <table.FlexRender cell={cell} />
-                </TableCell>
-              ))}
-            </TableRow>
-          ))}
+          {table.getRowModel().rows.map((row, i, all) => {
+            // Sorted by time, the rows fall under a heading for each month.
+            const month = monthText(row.original.at);
+            const opens = byTime && (i === 0 || monthText(all[i - 1].original.at) !== month);
+            return (
+              <Fragment key={row.id}>
+                {opens && (
+                  <TableRow>
+                    <TableHead scope="colgroup" colSpan={columns.length} className="pt-6 text-base font-semibold text-fg">
+                      {month}
+                    </TableHead>
+                  </TableRow>
+                )}
+                <TableRow>
+                  {row.getAllCells().map((cell) => (
+                    <TableCell
+                      key={cell.id}
+                      className={cn(
+                        row.original.retracted && "text-fg-3",
+                        NUMERIC.has(cell.column.id) && "text-end",
+                        FOLDED.has(cell.column.id) && "@max-3xl:hidden",
+                      )}
+                    >
+                      <table.FlexRender cell={cell} />
+                    </TableCell>
+                  ))}
+                </TableRow>
+              </Fragment>
+            );
+          })}
           {rows.length === 0 && (
             <TableRow>
               <TableCell colSpan={columns.length}>No events in this range. Widen the dates or pick all habits.</TableCell>
@@ -234,7 +251,7 @@ function RawLog() {
             <AlertDialogTitle>Retract this log of {confirming?.habit}?</AlertDialogTitle>
             <AlertDialogDescription>
               The {confirming ? whenText(confirming.at) : ""} event stays in the log, marked retracted, and stops counting toward
-              consistency and streaks. You can't undo this; log it again if it was a mistake.
+              consistency. You can't undo this; log it again if it was a mistake.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

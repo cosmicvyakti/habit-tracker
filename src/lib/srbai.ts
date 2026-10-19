@@ -1,3 +1,4 @@
+import type { Frequency } from "./dates";
 import type { CheckIn } from "./model";
 
 /**
@@ -15,6 +16,12 @@ export const SRBAI_ITEMS = [
 export const SRBAI_MIN = 1;
 export const SRBAI_MAX = 7;
 export const CHECK_IN_EVERY_DAYS = 14;
+
+/**
+ * Habits that get check-ins and the automaticity curve. Lally et al. 2010 followed behaviors done daily; a weekly one
+ * still repeats often enough to grow automatic, but asking every 14 days about a monthly or yearly one is noise.
+ */
+export const checksIn = (f: Frequency) => f === "daily" || f === "weekly";
 
 const DAY_MS = 86_400_000;
 

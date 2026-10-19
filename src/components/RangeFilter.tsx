@@ -4,6 +4,7 @@ import { Input } from "@/components/lime/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/lime/ui/select";
 import type { Habit } from "../lib/model";
 import type { rangeSearchSchema } from "../lib/schema";
+import { title } from "./HabitCard";
 
 type RangeSearch = z.infer<typeof rangeSearchSchema>;
 
@@ -24,11 +25,12 @@ export default function RangeFilter({
   const set = (patch: Partial<RangeSearch>) => onChange({ ...search, ...patch });
   const items = [
     ...(allowAll ? [{ value: ALL, label: "All habits" }] : []),
-    ...habits.map((h) => ({ value: h.id, label: h.archivedAt ? `${h.behavior} (archived)` : h.behavior })),
+    ...habits.map((h) => ({ value: h.id, label: h.archivedAt ? `${title(h.behavior)} (archived)` : title(h.behavior) })),
   ];
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-      <Field name="habit" className="sm:flex-1">
+    // The habit gets a row of its own, so a long name isn't cut short; the two dates share the row below.
+    <div className="flex flex-col gap-4">
+      <Field name="habit">
         <FieldLabel>Habit</FieldLabel>
         <Select items={items} value={search.habit ?? ALL} onValueChange={(v) => set({ habit: v === ALL || !v ? undefined : v })}>
           <SelectTrigger className="w-full" />
@@ -41,14 +43,16 @@ export default function RangeFilter({
           </SelectContent>
         </Select>
       </Field>
-      <Field name="from" className="sm:w-44">
-        <FieldLabel>From</FieldLabel>
-        <Input type="date" value={search.from ?? ""} onChange={(e) => set({ from: e.target.value || undefined })} />
-      </Field>
-      <Field name="to" className="sm:w-44">
-        <FieldLabel>To</FieldLabel>
-        <Input type="date" value={search.to ?? ""} onChange={(e) => set({ to: e.target.value || undefined })} />
-      </Field>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+        <Field name="from" className="sm:flex-1">
+          <FieldLabel>From</FieldLabel>
+          <Input type="date" value={search.from ?? ""} onChange={(e) => set({ from: e.target.value || undefined })} />
+        </Field>
+        <Field name="to" className="sm:flex-1">
+          <FieldLabel>To</FieldLabel>
+          <Input type="date" value={search.to ?? ""} onChange={(e) => set({ to: e.target.value || undefined })} />
+        </Field>
+      </div>
     </div>
   );
 }

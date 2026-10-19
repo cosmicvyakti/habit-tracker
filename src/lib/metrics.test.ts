@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { donePeriods, periodStats } from "./consistency";
-import { automaticity, fitAutomaticity } from "./curve";
+import { countFrom, donePeriods, periodStats } from "./consistency";
+import { automaticity, fitAutomaticity, trustFit } from "./curve";
+import { effortTrend, payoffNoticed } from "./effort";
 import { longestStreak } from "./dates";
 import type { CheckIn, HabitEvent } from "./model";
 import { checkInDue, nextCheckInDue, srbaiPoints, srbaiScore } from "./srbai";
@@ -99,6 +100,50 @@ describe("fitAutomaticity", () => {
   });
 });
 
+describe("trustFit", () => {
+  const truth = { a: 6.2, b: 4.8, c: 0.045 };
+  const at = (ts: number[]) => ts.map((t) => ({ t, y: automaticity(truth, t) }));
+  const trust = (points: { t: number; y: number }[]) => trustFit(fitAutomaticity(points), points);
+
+  it("needs 5 check-ins over 6 weeks before it trusts a fit", () => {
+    // Three check-ins fit, but too few to name a plateau: the case that showed one already passed.
+    expect(trust(at([148, 162, 176]))).toBe("few-points");
+    expect(trust(at([0, 7, 14, 21, 28]))).toBe("short-span");
+    expect(trust(at([0, 14, 28, 42, 56]))).toBe("trusted");
+  });
+
+  it("doesn't trust scores the curve can't follow", () => {
+    expect(trust([1, 6, 2, 6, 1, 6].map((y, i) => ({ t: i * 14, y })))).toBe("poor-fit");
+  });
+});
+
+describe("effort and payoff", () => {
+  const day = (n: number) => new Date(2026, 0, 1 + n, 8);
+  it("compares the first 4 weeks with the last 4", () => {
+    const events = [
+      ev(day(0), { effort: 5 }),
+      ev(day(20), { effort: 4 }),
+      ev(day(40), { effort: 3 }),
+      ev(day(70), { effort: 1 }),
+      ev(day(80), { effort: 2 }),
+    ];
+    expect(effortTrend(events, day(0), day(84))).toEqual({ all: 3, first: 4.5, last: 1.5 });
+  });
+  it("gives only the overall mean when the range is under 8 weeks", () => {
+    const events = [ev(day(0), { effort: 4 }), ev(day(10), { effort: 2 })];
+    expect(effortTrend(events, day(0), day(30))).toEqual({ all: 3, first: null, last: null });
+  });
+  it("counts the payoff only where the user answered", () => {
+    const events = [
+      ev(day(0), { payoffNoticed: true }),
+      ev(day(1), { payoffNoticed: false }),
+      ev(day(2), { payoffNoticed: true }),
+      ev(day(3)),
+    ];
+    expect(payoffNoticed(events)).toEqual({ yes: 2, answered: 3 });
+  });
+});
+
 describe("context stability", () => {
   const at = (h: number, m = 0) => new Date(2026, 9, 15, h, m);
   it("measures time-of-day spread on a circle", () => {
@@ -130,6 +175,20 @@ describe("consistency and never miss twice", () => {
   it("treats the current period as pending, not missed", () => {
     const s = periodStats(done("2026-09-28", "2026-09-29", "2026-10-01"), "daily", d("2026-09-28"), d("2026-10-02"), d("2026-10-02"));
     expect(s).toEqual({ done: 3, elapsed: 4, rate: 0.75, doubleMisses: 0, state: "on-track" });
+  });
+
+  it("is not started before the first log, rather than missed", () => {
+    const s = periodStats(done(), "daily", d("2026-10-17"), d("2026-10-19"), d("2026-10-19"));
+    expect(s).toMatchObject({ done: 0, elapsed: 2, state: "not-started" });
+  });
+
+  it("counts from the first full period when the first one wasn't logged", () => {
+    const evening = new Date(2026, 9, 17, 21);
+    expect(countFrom(evening, done(), "daily")).toEqual(d("2026-10-18"));
+    expect(countFrom(evening, done("2026-10-17"), "daily")).toEqual(d("2026-10-17"));
+    expect(countFrom(d("2026-10-17"), done(), "daily")).toEqual(d("2026-10-17"));
+    // Created in April: this year is its first period, and it hasn't ended.
+    expect(countFrom(new Date(2026, 3, 9), done(), "yearly")).toEqual(d("2027-01-01"));
   });
 
   it("counts the current period once it is done", () => {
