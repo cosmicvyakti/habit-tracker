@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/lime/ui/collapsible";
 import { Field, FieldLabel } from "@/components/lime/ui/field";
 import { Input } from "@/components/lime/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/lime/ui/select";
@@ -15,11 +16,14 @@ export default function RangeFilter({
   search,
   habits,
   allowAll,
+  datesFolded,
   onChange,
 }: {
   search: RangeSearch;
   habits: Habit[];
   allowAll?: boolean;
+  /** Keeps the dates behind a "Date range" toggle, open only once a date is set, so the page leads with its answer. */
+  datesFolded?: boolean;
   onChange: (next: RangeSearch) => void;
 }) {
   const set = (patch: Partial<RangeSearch>) => onChange({ ...search, ...patch });
@@ -27,6 +31,18 @@ export default function RangeFilter({
     ...(allowAll ? [{ value: ALL, label: "All habits" }] : []),
     ...habits.map((h) => ({ value: h.id, label: h.archivedAt ? `${title(h.behavior)} (archived)` : title(h.behavior) })),
   ];
+  const dates = (
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+      <Field name="from" className="sm:flex-1">
+        <FieldLabel>From</FieldLabel>
+        <Input type="date" value={search.from ?? ""} onChange={(e) => set({ from: e.target.value || undefined })} />
+      </Field>
+      <Field name="to" className="sm:flex-1">
+        <FieldLabel>To</FieldLabel>
+        <Input type="date" value={search.to ?? ""} onChange={(e) => set({ to: e.target.value || undefined })} />
+      </Field>
+    </div>
+  );
   return (
     // The habit gets a row of its own, so a long name isn't cut short; the two dates share the row below.
     <div className="flex flex-col gap-4">
@@ -43,16 +59,16 @@ export default function RangeFilter({
           </SelectContent>
         </Select>
       </Field>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-        <Field name="from" className="sm:flex-1">
-          <FieldLabel>From</FieldLabel>
-          <Input type="date" value={search.from ?? ""} onChange={(e) => set({ from: e.target.value || undefined })} />
-        </Field>
-        <Field name="to" className="sm:flex-1">
-          <FieldLabel>To</FieldLabel>
-          <Input type="date" value={search.to ?? ""} onChange={(e) => set({ to: e.target.value || undefined })} />
-        </Field>
-      </div>
+      {datesFolded ? (
+        <Collapsible defaultOpen={Boolean(search.from || search.to)}>
+          <CollapsibleTrigger className="w-auto">Date range</CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="pt-2">{dates}</div>
+          </CollapsibleContent>
+        </Collapsible>
+      ) : (
+        dates
+      )}
     </div>
   );
 }

@@ -7,7 +7,7 @@ import { Empty, EmptyActions, EmptyDescription, EmptyTitle } from "@/components/
 import { List, ListItem } from "@/components/lime/ui/list";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/lime/ui/table";
 import CurveChart from "../components/CurveChart";
-import { count, MISS_BADGE, missText, pct, UNIT } from "../components/HabitSheet";
+import { count, MISS_BADGE, missText, pct, title, UNIT } from "../components/HabitSheet";
 import RangeFilter from "../components/RangeFilter";
 import { logQuery, useLog } from "../data";
 import { countFrom, donePeriods, periodStats } from "../lib/consistency";
@@ -77,13 +77,40 @@ function Insights() {
   const span = points.length ? Math.round(lastT - points[0].t) : 0;
   const effort = effortTrend(inRange, range.from, addDays(range.to, 1));
   const payoff = payoffNoticed(inRange);
+  const monthYear = (day: number) => addDays(start, Math.round(day)).toLocaleDateString([], { month: "long", year: "numeric" });
+  // The page's answer, in one sentence: is this becoming automatic, or for habits without check-ins, how often is it done.
+  const answer = !checksIn(f)
+    ? stats.rate === null
+      ? `Too early to tell how often you ${habit.behavior}.`
+      : `You ${habit.behavior} in ${stats.done} of ${count(stats.elapsed, UNIT[f])}.`
+    : trust !== "trusted"
+      ? `Too early to tell if ${habit.behavior} is becoming automatic.`
+      : fit?.plateauDay == null
+        ? `${title(habit.behavior)} is still getting easier, with no sign of leveling off yet.`
+        : fit.plateauDay <= lastT
+          ? `${title(habit.behavior)} has felt automatic since ${monthYear(fit.plateauDay)}.`
+          : `${title(habit.behavior)} should feel automatic around ${monthYear(fit.plateauDay)}.`;
+  const consistencyLead =
+    stats.rate === null ? null : stats.rate >= 0.8 ? "You rarely miss twice." : stats.rate >= 0.5 ? `You do it most ${UNIT[f]}s.` : "It hasn't found a steady rhythm yet.";
+  const effortLead =
+    effort.first === null || effort.last === null
+      ? null
+      : effort.last < effort.first - 0.5
+        ? "It feels easier than when you started."
+        : effort.last > effort.first + 0.5
+          ? "It feels harder than when you started."
+          : "It feels about the same as when you started.";
+  const timingLead =
+    spread === null ? null : spread <= 1.5 ? "Your timing is steady." : spread <= 3 ? "Your timing varies a little." : "Your timing varies a lot.";
 
   return (
     <main className={SHELL}>
       <h1 className="title-page">Insights</h1>
       <div className="mt-6">
-        <RangeFilter search={{ ...search, habit: habit.id }} habits={log.habits} onChange={(s) => navigate({ search: s })} />
+        <RangeFilter search={{ ...search, habit: habit.id }} habits={log.habits} datesFolded onChange={(s) => navigate({ search: s })} />
       </div>
+
+      <p className="lead-sentence mt-8 break-words">{answer}</p>
 
       <div className="mt-8 flex flex-col gap-8">
         <section className="flex flex-col gap-3" aria-labelledby="automaticity">
@@ -155,11 +182,6 @@ function Insights() {
                   </CollapsibleContent>
                 </Collapsible>
               )}
-              <p className="body text-fg-2">
-                Scores use the SRBAI from Gardner et al. 2012. The curve A(t) = a - b·e^(-ct) and the 95% plateau follow Lally et al. 2010.
-                The curve shows once {TRUST_MIN_POINTS} check-ins over {TRUST_MIN_SPAN_DAYS} days fit it well, and it uses every check-in,
-                whatever the date range.
-              </p>
             </>
           ) : (
             <p className="body text-fg">
@@ -173,6 +195,7 @@ function Insights() {
           <h2 id="consistency" className="text-lg font-semibold">
             Consistency
           </h2>
+          {consistencyLead && <p className="text-base font-medium">{consistencyLead}</p>}
           <List>
             <ListItem
               title="Consistency rate"
@@ -184,16 +207,13 @@ function Insights() {
             <ListItem title="Longest streak" description="For reference" trailing={count(longestStreak(done, f), UNIT[f])} />
           </List>
           <p className="body text-fg">{missText(stats.state, f)}</p>
-          <p className="body text-fg-2">
-            Missing once didn&rsquo;t set back habit formation (Lally et al. 2010), so this app counts consistency instead of streaks.
-            &ldquo;Never miss twice&rdquo; is from Clear 2018.
-          </p>
         </section>
 
         <section className="flex flex-col gap-3" aria-labelledby="effort">
           <h2 id="effort" className="text-lg font-semibold">
             Effort and payoff
           </h2>
+          {effortLead && <p className="text-base font-medium">{effortLead}</p>}
           <List>
             {effort.first !== null && effort.last !== null ? (
               <ListItem
@@ -214,17 +234,13 @@ function Insights() {
               trailing={payoff.answered ? pct(payoff.yes / payoff.answered) : "Not yet"}
             />
           </List>
-          <p className="body text-fg-2">
-            Both come from the details you add to a log. Effort should fall as the habit becomes automatic; it&rsquo;s this app&rsquo;s
-            stand-in between check-ins, not a measure from Lally et al. 2010. Noticing the payoff is the reinforcement that keeps a behavior
-            going. Skinner 1938.
-          </p>
         </section>
 
         <section className="flex flex-col gap-3" aria-labelledby="stability">
           <h2 id="stability" className="text-lg font-semibold">
             Context stability
           </h2>
+          {timingLead && <p className="text-base font-medium">{timingLead}</p>}
           <List>
             <ListItem
               title="Time-of-day spread"
@@ -242,10 +258,35 @@ function Insights() {
               trailing={exact.length}
             />
           </List>
-          <p className="body text-fg-2">
-            A smaller spread and a higher cue share mean a more stable context. Wood &amp; Neal 2007; Lally et al. 2010.
-          </p>
         </section>
+
+        {/* Method and sources, kept out of the results so each section reads as its finding. */}
+        <Collapsible>
+          <CollapsibleTrigger>Why these numbers</CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="flex flex-col gap-3 pt-2">
+              {checksIn(f) && (
+                <p className="body text-fg-2">
+                  Scores use the SRBAI from Gardner et al. 2012. The curve A(t) = a - b·e^(-ct) and the 95% plateau follow Lally et al. 2010.
+                  The curve shows once {TRUST_MIN_POINTS} check-ins over {TRUST_MIN_SPAN_DAYS} days fit it well, and it uses every check-in,
+                  whatever the date range.
+                </p>
+              )}
+              <p className="body text-fg-2">
+                Missing once didn&rsquo;t set back habit formation (Lally et al. 2010), so this app counts consistency instead of streaks.
+                &ldquo;Never miss twice&rdquo; is from Clear 2018.
+              </p>
+              <p className="body text-fg-2">
+                Both come from the details you add to a log. Effort should fall as the habit becomes automatic; it&rsquo;s this app&rsquo;s
+                stand-in between check-ins, not a measure from Lally et al. 2010. Noticing the payoff is the reinforcement that keeps a behavior
+                going. Skinner 1938.
+              </p>
+              <p className="body text-fg-2">
+                A smaller spread and a higher cue share mean a more stable context. Wood &amp; Neal 2007; Lally et al. 2010.
+              </p>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       </div>
     </main>
   );
