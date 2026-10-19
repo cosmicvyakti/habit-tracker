@@ -308,9 +308,17 @@ test("the theme follows the system until the user picks one", async ({ page }) =
   const toggle = page.getByRole("button", { name: "Dark theme" });
   await expect(toggle).toHaveAttribute("aria-pressed", "true");
 
+  // A phone's bars match the page: the browser's through theme-color, an installed app's through the manifest.
+  const barColor = page.locator('meta[name="theme-color"]');
+  const manifest = page.locator('link[rel="manifest"]');
+  await expect(barColor).toHaveAttribute("content", "#0e0e0c");
+  await expect(manifest).toHaveAttribute("href", "/manifest-dark.webmanifest");
+
   await toggle.click();
   await expect(html).toHaveAttribute("data-theme", "light");
   await expect(toggle).toHaveAttribute("aria-pressed", "false");
+  await expect(barColor).toHaveAttribute("content", "#ffffff");
+  await expect(manifest).toHaveAttribute("href", "/manifest.webmanifest");
   await page.reload();
   await expect(html).toHaveAttribute("data-theme", "light");
 });

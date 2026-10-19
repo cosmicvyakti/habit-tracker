@@ -7,18 +7,22 @@ import fonts from "../fonts.css?url";
 import { LimePortalProvider } from "@/lib/lime/portal";
 import { Sidebar, TopBar } from "../components/Navigation";
 import SyncStatus from "../components/SyncStatus";
-import ThemeToggle, { THEME_KEY } from "../components/ThemeToggle";
+import ThemeToggle, { applyTheme, BARS, THEME_KEY } from "../components/ThemeToggle";
 import UpdateNotice from "../components/UpdateNotice";
 import { AutoMigrateV1 } from "../components/V1Import";
 import { signedIn } from "../data";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
-    meta: [{ charSet: "utf-8" }, { name: "viewport", content: "width=device-width, initial-scale=1" }, { title: "Habit Tracker" }],
+    meta: [
+      { charSet: "utf-8" },
+      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { title: "Habit Tracker" },
+    ],
     links: [
       { rel: "stylesheet", href: fonts },
       { rel: "stylesheet", href: lime },
-      { rel: "manifest", href: "/manifest.webmanifest" },
+      // The theme-color and manifest tags are THEME_SCRIPT's, set for the theme in use.
       { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
       { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
     ],
@@ -48,7 +52,7 @@ function Shell({ children }: { children: ReactNode }) {
 }
 
 // Lime switches on data-theme and ignores the system setting, so the system setting is only the default.
-const THEME_SCRIPT = `try { document.documentElement.dataset.theme = localStorage.getItem("${THEME_KEY}") ?? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"); } catch {}`;
+const THEME_SCRIPT = `try { (${applyTheme.toString()})(localStorage.getItem("${THEME_KEY}") ?? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"), ${JSON.stringify(BARS)}); } catch {}`;
 
 function Root() {
   const { queryClient } = Route.useRouteContext();
