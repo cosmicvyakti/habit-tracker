@@ -9,6 +9,8 @@ export function getRouter() {
     routeTree,
     context: { queryClient },
     scrollRestoration: true,
+    // Pages crossfade where the browser supports view transitions; motion.css sets the timing.
+    defaultViewTransition: true,
     defaultErrorComponent: LoadError,
     defaultNotFoundComponent: NotFound,
   });

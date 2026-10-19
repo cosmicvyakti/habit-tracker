@@ -111,9 +111,15 @@ export default function RecentPeriods({ frequency, done, today, start, label, on
               onPressedChange={() => onToggle(key)}
               aria-current={current ? "date" : undefined}
               // The olive edge keeps a logged period at 3:1 on the track, and the check mark says "logged" without color.
-              className={cn("grow data-pressed:inset-ring data-pressed:inset-ring-accent-line", current && "underline underline-offset-4")}
+              // Logging is a state change the person caused, so the fill and edge ease in rather than snap.
+              className={cn(
+                "grow transition-[background-color,color,box-shadow] duration-(--dur-fast) ease-out data-pressed:inset-ring data-pressed:inset-ring-accent-line",
+                current && "underline underline-offset-4",
+              )}
             >
-              {done.has(key) && <Icon icon={Checkmark} size={12} />}
+              {done.has(key) && (
+                <Icon icon={Checkmark} size={12} className="transition-[opacity,scale] duration-(--dur-fast) ease-out starting:scale-(--scale-enter) starting:opacity-0" />
+              )}
               {label}
               {/* Keeps the visible label inside the accessible name, then spells the period out where that adds something. */}
               {(long !== label || current) && (

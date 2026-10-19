@@ -40,7 +40,13 @@ export default function ThemeToggle({ size = "icon-sm" }: { size?: "icon-sm" | "
         setDark(!dark);
       }}
     >
-      <Icon icon={dark ? Sun : Moon} size={size === "icon" ? 20 : 16} />
+      {/* Keyed, so the new glyph mounts and fades in from its starting style instead of swapping in place. */}
+      <Icon
+        key={dark ? "sun" : "moon"}
+        icon={dark ? Sun : Moon}
+        size={size === "icon" ? 20 : 16}
+        className="transition-[opacity,scale] duration-(--dur-fast) ease-out starting:scale-(--scale-enter) starting:opacity-0"
+      />
     </Button>
   );
 }

@@ -5,6 +5,7 @@ import { buttonVariants } from "@/components/lime/ui/button";
 import { ToastProvider } from "@/components/lime/ui/toast";
 import lime from "@/components/lime/styles.css?url";
 import fonts from "../fonts.css?url";
+import motion from "../motion.css?url";
 import { LimePortalProvider } from "@/lib/lime/portal";
 import { cn } from "@/lib/lime/utils";
 import { Sidebar, TopBar } from "../components/Navigation";
@@ -24,6 +25,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     links: [
       { rel: "stylesheet", href: fonts },
       { rel: "stylesheet", href: lime },
+      { rel: "stylesheet", href: motion },
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
       { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },

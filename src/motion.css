@@ -1,0 +1,6 @@
+/* The page crossfade on navigation. The browser's default is 250ms on ease; this puts it on Lime's tokens:
+   the old page leaves on --ease-in at the shorter duration, the new one enters on --ease-out.
+   The tokens live on <html class="lime">, so they reach these pseudo-elements, and reduced motion zeroes them. */
+::view-transition-group(root) { animation-duration: var(--dur-base); animation-timing-function: var(--ease-out); }
+::view-transition-old(root) { animation-duration: var(--dur-fast); animation-timing-function: var(--ease-in); }
+::view-transition-new(root) { animation-duration: var(--dur-base); animation-timing-function: var(--ease-out); }
