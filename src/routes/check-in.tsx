@@ -5,7 +5,7 @@ import { Button } from "@/components/lime/ui/button";
 import { Empty, EmptyActions, EmptyDescription, EmptyTitle } from "@/components/lime/ui/empty";
 import { Radio, RadioGroup } from "@/components/lime/ui/radio";
 import { enqueue, logQuery, newId, now, useLog } from "../data";
-import { nextCheckInDue, SRBAI_ITEMS, SRBAI_MAX, SRBAI_MIN, srbaiScore } from "../lib/srbai";
+import { SRBAI_ITEMS, SRBAI_MAX, SRBAI_MIN, srbaiScore } from "../lib/srbai";
 
 export const Route = createFileRoute("/check-in")({
   validateSearch: z.object({ habit: z.string().optional().catch(undefined) }),
@@ -39,19 +39,11 @@ function CheckInPage() {
     );
   }
 
-  const due = nextCheckInDue(
-    log.checkIns.filter((c) => c.habitId === habit.id),
-    new Date(),
-  );
   const missing = answers.filter((a) => a === null).length;
 
   return (
     <main className="mx-auto w-full max-w-md px-4 pt-4 pb-8 sm:px-6 sm:pt-8">
       <h1 className="title-page">Automaticity check-in</h1>
-      <p className="body mt-2 text-fg-2">
-        Four questions, every 14 days. Rate how much you agree, from 1 (strongly disagree) to 7 (strongly agree).
-        {due > new Date() && ` Your next check-in is due ${due.toLocaleDateString()}, but you can answer now.`}
-      </p>
       <form
         className="mt-8 flex flex-col gap-8"
         onSubmit={async (e) => {

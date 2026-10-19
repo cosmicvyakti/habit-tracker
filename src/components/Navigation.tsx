@@ -75,14 +75,15 @@ export function Sidebar() {
 }
 
 /**
- * The phone's top bar, pinned as an app's navigation bar is: the menu at the start and the theme at the end. Once the
- * page's own title has scrolled under it, the bar says the title and draws its rule, so the reader knows where they are.
+ * The phone's top bar, pinned as an app's navigation bar is: the menu at the start, the page's title in the middle, and
+ * the theme at the end. The page's own h1 is visually hidden on a phone (__root.tsx), so the bar says the title instead,
+ * and draws its rule once the page scrolls under it.
  */
 export function TopBar() {
   const bar = useRef<HTMLElement>(null);
   const [open, setOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { title, scrolled } = useTitlePast(bar, pathname);
+  const { title, scrolled } = usePageTitle(bar, pathname);
   return (
     <header
       ref={bar}
@@ -94,11 +95,7 @@ export function TopBar() {
           <Icon icon={Menu} size={20} />
         </Button>
         {/* The page's h1 says it to a screen reader; this is for the eye. */}
-        <p
-          aria-hidden="true"
-          data-hidden={title ? undefined : true}
-          className="pointer-events-none absolute inset-x-16 truncate text-center text-lg font-semibold tracking-tight transition-opacity data-hidden:opacity-0"
-        >
+        <p aria-hidden="true" className="pointer-events-none absolute inset-x-16 truncate text-center text-lg font-semibold tracking-tight">
           {title}
         </p>
         <ThemeToggle size="icon" />
@@ -151,30 +148,28 @@ function NavPage({ open, onOpenChange }: { open: boolean; onOpenChange: (open: b
   );
 }
 
-/** The page's title once it has scrolled under the bar, and whether the page has scrolled at all. */
-function useTitlePast(bar: RefObject<HTMLElement | null>, pathname: string) {
+/** The page's title, from its h1, and whether the page has scrolled at all. */
+function usePageTitle(bar: RefObject<HTMLElement | null>, pathname: string) {
   const [state, setState] = useState<{ title: string | null; scrolled: boolean }>({ title: null, scrolled: false });
   useEffect(() => {
     let frame = 0;
     const read = () => {
       frame = 0;
-      const edge = bar.current?.getBoundingClientRect().bottom ?? 0;
-      const h1 = document.querySelector("main h1");
-      const title = h1 && h1.getBoundingClientRect().bottom <= edge ? h1.textContent?.trim() || null : null;
+      const title = document.querySelector("main h1")?.textContent?.trim() || null;
       const scrolled = window.scrollY > 0;
       setState((s) => (s.title === title && s.scrolled === scrolled ? s : { title, scrolled }));
     };
-    const onScroll = () => {
+    const onChange = () => {
       if (!frame) frame = requestAnimationFrame(read);
     };
     read();
-    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("scroll", onChange, { passive: true });
     // Read again as the page swaps in: a page that loads arrives after the address changes.
-    const swapped = new MutationObserver(onScroll);
+    const swapped = new MutationObserver(onChange);
     const column = bar.current?.parentElement;
     if (column) swapped.observe(column, { childList: true, subtree: true, characterData: true });
     return () => {
-      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("scroll", onChange);
       swapped.disconnect();
       cancelAnimationFrame(frame);
     };

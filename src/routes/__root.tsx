@@ -77,7 +77,9 @@ function Root() {
             ) : (
               <div className="flex">
                 <Sidebar />
-                <div className="min-w-0 flex-1">
+                {/* On a phone the top bar says the page's title, so the page's own h1 stays for screen readers only, and
+                    what came under it moves up to the bar. */}
+                <div className="min-w-0 flex-1 max-md:[&_main_h1]:sr-only max-md:[&_main_h1+*]:mbs-0">
                   <TopBar />
                   <SyncStatus />
                   {/* Importing needs a session, so it waits until the user is past sign-in. */}

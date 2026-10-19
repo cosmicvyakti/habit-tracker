@@ -54,7 +54,6 @@ function PlanForm({ habit }: { habit: Habit | undefined }) {
   return (
     <main className="mx-auto w-full max-w-md px-4 pt-4 pb-8 sm:px-6 sm:pt-8">
       <h1 className="title-page">{habit ? "Edit plan" : "Define a habit"}</h1>
-      <p className="body mt-2 text-fg-2">Write it as an implementation intention: after [cue], I will [behavior] at [place].</p>
       <form
         ref={formRef}
         className="mt-8 flex flex-col gap-4"

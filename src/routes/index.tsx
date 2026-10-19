@@ -22,7 +22,6 @@ function Today() {
   return (
     <main className="mx-auto w-full max-w-2xl px-4 pt-4 pb-8 sm:px-6 sm:pt-8">
       <h1 className="title-page">Today</h1>
-      <p className="body mt-2 text-fg-2">One tap logs a habit with the place and cue from its plan.</p>
       {habits.length === 0 ? (
         <Empty className="mt-8">
           <EmptyTitle aria-level={2}>No habits yet</EmptyTitle>

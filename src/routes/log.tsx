@@ -152,10 +152,6 @@ function RawLog() {
   return (
     <main className="mx-auto w-full max-w-5xl px-4 pt-4 pb-8 sm:px-6 sm:pt-8">
       <h1 className="title-page">Raw log</h1>
-      <p className="body mt-2 text-fg-2">
-        Every logged event, never edited. Retracting adds a retraction; it doesn't delete. Migrated and backfilled events have approximate
-        times.
-      </p>
       <div className="mt-6">
         <RangeFilter search={search} habits={log.habits} allowAll onChange={(s) => navigate({ search: s })} />
       </div>
