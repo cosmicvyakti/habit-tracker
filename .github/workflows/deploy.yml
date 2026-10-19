@@ -1,42 +1,110 @@
-name: Deploy to GitHub Pages
+# Deploy main to production once CI has passed on it.
+#
+# `qs deploy` is a git push to the server's own remote, where quicksilver's
+# post-receive hook builds the root Dockerfile and runs `docker compose up -d
+# --build`. This job makes the same push from a runner, so what reaches
+# production is a commit CI passed, end-to-end tests included. The Dockerfile's
+# own type check and unit tests still run on the server, and a manual
+# `qs deploy` still works and still bypasses CI.
+#
+# Off until the repository variable DEPLOY_ENABLED is "true", so this file can
+# land before the key and the host are set up. README.md, "Deploying", says how.
+name: Deploy
 
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
-  workflow_dispatch:
 
+# Nothing here writes to GitHub. The token only reads which commit main is at.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
+# One deploy at a time, and a queued one is never cancelled: the server sees
+# each push in order, and a fast-forward-only push refuses one that went back.
 concurrency:
-  group: pages
-  cancel-in-progress: true
+  group: deploy-production
+  cancel-in-progress: false
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm test
-      - run: npm run build
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist
-
   deploy:
-    needs: build
+    # CI passed, on a push to this repository's main - not a pull request
+    # whose head branch happens to be called main.
+    if: >-
+      vars.DEPLOY_ENABLED == 'true' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
     environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      name: production
+      url: https://habit.axismundi.dev
+    timeout-minutes: 30
+    env:
+      SHA: ${{ github.event.workflow_run.head_sha }}
     steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      # Two pushes close together each get a CI run, and the older one can
+      # finish last. Deploying it would take production backwards, so only the
+      # commit main is at now goes out; the newer commit's own run deploys it.
+      - name: Check main is still at this commit
+        id: current
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          head=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+          if [ "$head" != "$SHA" ]; then
+            echo "::notice::main has moved on to $head; that commit's CI run deploys it, not this one."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Full history: the server's repository holds the earlier deploys, and a
+      # push from a shallow clone cannot always prove it is a fast-forward.
+      - if: steps.current.outputs.skip != 'true'
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      # The host key is pinned, never scanned here: a key learned at connect
+      # time trusts whoever answers.
+      - name: Install the deploy key
+        if: steps.current.outputs.skip != 'true'
+        env:
+          KEY: ${{ secrets.QUICKSILVER_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.QUICKSILVER_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      # The hook builds and starts the image inside this push, and a failed
+      # build stage comes back as a failed push. No --force: if the server's
+      # main is not an ancestor of this commit (a `qs deploy --ref` rollback),
+      # the push is refused and a person decides.
+      - name: Push to quicksilver
+        if: steps.current.outputs.skip != 'true'
+        env:
+          REMOTE: ${{ secrets.QUICKSILVER_REMOTE }}
+          GIT_SSH_COMMAND: ssh -i "$HOME/.ssh/deploy_key" -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o BatchMode=yes
+        run: git push "$REMOTE" "$SHA:refs/heads/main"
+
+      # The hook's `docker compose up -d` returns once the container exists,
+      # not once it serves. Three answers in a row, ten seconds apart, is what a
+      # container in a restart loop cannot give.
+      - name: Wait for the site to serve
+        if: steps.current.outputs.skip != 'true'
+        env:
+          URL: https://habit.axismundi.dev/api/health
+        run: |
+          ok=0
+          for _ in $(seq 30); do
+            if curl -sf -m 5 -o /dev/null "$URL"; then ok=$((ok + 1)); else ok=0; fi
+            [ "$ok" -ge 3 ] && exit 0
+            sleep 10
+          done
+          echo "::error::$URL did not answer three times in a row within 5 minutes of the push."
+          exit 1

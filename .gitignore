@@ -1,4 +1,10 @@
 node_modules
 dist
+.output
+.tanstack
+data
+test-results
+playwright-report
 *.log
 *.tsbuildinfo
+.e2e

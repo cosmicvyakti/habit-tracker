@@ -1,0 +1,15 @@
+.git
+.github
+.env
+node_modules
+dist
+data
+.e2e
+test-results
+playwright-report
+.design-system
+.ui-review
+.claude
+.agents
+*.db
+*.db-*

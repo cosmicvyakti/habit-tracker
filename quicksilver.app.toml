@@ -1,0 +1,13 @@
+# Per-app manifest read by quicksilver's deploy hook.
+name = "habit"
+subdomain = "habit"     # final host is habit.<domain>
+port = 8000
+database = false        # SQLite on the container's volume, not the shared Postgres
+
+# Non-secret env defaults, injected into the server-side .env on every deploy - existing keys
+# are never overwritten. This file lives in git: NEVER put secrets here.
+#
+# Sign-in needs two values, set with `qs env set habit` (README.md, "Deploying"): HABITS_EMAIL and
+# HABITS_PASSWORD_HASH from `npm run hash-password`. Without them every request fails and the
+# health check says why.
+[env]

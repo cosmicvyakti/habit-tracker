@@ -1,0 +1,34 @@
+# Production compose, run by quicksilver's post-receive hook on the server.
+# Single service on the shared quicksilvernet; nginx proxies habit.<domain> to the network
+# alias below. No published ports.
+name: habit
+
+services:
+  backend:
+    build: .
+    env_file: .env
+    restart: unless-stopped
+    # Node isn't built to be PID 1; init forwards docker stop's SIGTERM and reaps children.
+    init: true
+    volumes:
+      # The SQLite database. A named volume outlives every rebuild; on the server it's habit_data.
+      - data:/data
+    # The image has no curl or wget, so Node asks. /api/health fails when sign-in isn't configured
+    # or the database won't open, so `docker ps` shows a container that can't serve.
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8000/api/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      quicksilvernet:
+        aliases:
+          - habit
+
+volumes:
+  data:
+
+networks:
+  quicksilvernet:
+    external: true

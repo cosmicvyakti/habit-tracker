@@ -1,0 +1,4 @@
+/* Lime's typeface at the three weights it uses, served by the app so it also works offline. */
+@import "@fontsource/hanken-grotesk/400.css";
+@import "@fontsource/hanken-grotesk/500.css";
+@import "@fontsource/hanken-grotesk/600.css";
