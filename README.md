@@ -58,12 +58,6 @@ Sending a change twice adds nothing, so the queue can always retry. Logs, retrac
 
 When the server refuses a change, for example one that fails validation, the app drops it and says so. Signing out deletes everything saved on the device, including changes that haven't synced; the app asks first.
 
-### Moving data from the previous version
-
-The previous version kept data in the browser under the `habit-tracker:v1` localStorage key. On first load, the app imports that data automatically when it runs on the same origin, such as the old dev server at `localhost:5173`. The app keeps a copy under `habit-tracker:v1:migrated`. Data from another origin, such as the old GitHub Pages site, doesn't import.
-
-Each done period becomes one event at local noon on the period's first day, marked approximate. Importing the same data twice adds nothing.
-
 ## Run it
 
 ```bash
@@ -85,7 +79,7 @@ HABITS_EMAIL=you@example.com HABITS_PASSWORD_HASH=scrypt:16384:... npm start
 ## Test
 
 ```bash
-npm test           # Vitest: SRBAI, curve fit, consistency, stability, migration, sync
+npm test           # Vitest: SRBAI, curve fit, consistency, stability, sync
 npm run typecheck
 npm run lint       # Lime design system rules
 npm run e2e        # Playwright and axe, against a fresh seeded database, signed in

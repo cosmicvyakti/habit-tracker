@@ -21,17 +21,6 @@ const effort = z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), 
 
 const item = z.int().min(SRBAI_MIN).max(SRBAI_MAX);
 
-const habitSchema = z.object({
-  id,
-  frequency: z.enum(FREQUENCIES),
-  createdAt: iso,
-  context: z.string().max(200),
-  cue: z.string().max(200),
-  behavior: z.string().min(1).max(200),
-  consequence: z.string().max(200),
-  archivedAt: iso.nullable(),
-});
-
 const eventSchema = z.object({
   id,
   habitId: id,
@@ -43,8 +32,6 @@ const eventSchema = z.object({
   payoffNoticed: z.boolean().nullable(),
   payoffNote: z.string().max(200).nullable(),
 });
-
-export const importSchema = z.object({ habits: z.array(habitSchema), events: z.array(eventSchema) });
 
 /**
  * One change to the log, made in the browser and synced later. The browser picks the ID and the

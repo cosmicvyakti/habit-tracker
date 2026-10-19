@@ -9,6 +9,6 @@ const proxy = createMiddleware().server(({ request, next }) =>
   cameThroughProxy(request) ? next() : new Response("Not found", { status: 404 }),
 );
 
-// Render in the browser only: every view buckets the log by the user's local time zone,
-// and the v1 migration reads localStorage. Server functions still own all reads and writes.
+// Render in the browser only: every view buckets the log by the user's local time zone.
+// Server functions still own all reads and writes.
 export const startInstance = createStart(() => ({ defaultSsr: false, requestMiddleware: [proxy, csrf] }));

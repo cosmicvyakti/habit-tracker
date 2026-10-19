@@ -167,16 +167,6 @@ export function applyOp(op: Op): void {
   }
 }
 
-/** Idempotent: habits and events that already exist are skipped, never overwritten. */
-export function importData(habits: Habit[], events: HabitEvent[]): { habits: number; events: number } {
-  const h = insertHabitStmt();
-  const e = insertEventStmt();
-  return db().transaction(() => ({
-    habits: habits.reduce((n, x) => n + h.run(x).changes, 0),
-    events: events.reduce((n, x) => n + e.run(eventRow(x)).changes, 0),
-  }))();
-}
-
 const SESSION_DAYS = 180;
 const tokenHash = (token: string) => createHash("sha256").update(token).digest("hex");
 

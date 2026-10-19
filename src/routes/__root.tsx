@@ -12,7 +12,6 @@ import { Sidebar, TopBar } from "../components/Navigation";
 import SyncStatus from "../components/SyncStatus";
 import ThemeToggle, { applyTheme, BAR_COLOR, THEME_KEY } from "../components/ThemeToggle";
 import UpdateNotice from "../components/UpdateNotice";
-import { AutoMigrateV1 } from "../components/V1Import";
 import { signedIn } from "../data";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
@@ -95,8 +94,6 @@ function Root() {
                 <div className="min-w-0 flex-1 max-md:[&_main_h1]:sr-only max-md:[&_main_h1+*]:mbs-0">
                   <TopBar />
                   <SyncStatus />
-                  {/* Importing needs a session, so it waits until the user is past sign-in. */}
-                  <AutoMigrateV1 />
                   {/* The skip link's target: the next Tab after it lands on the page's first control. */}
                   <div id="content">
                     <Suspense fallback={null}>

@@ -29,7 +29,7 @@ export interface HabitEvent {
   habitId: string;
   /** When the behavior happened (ISO). Repetition over time is what builds automaticity. Source: Lally et al. 2010. */
   at: string;
-  /** True when `at` is a reconstruction (migrated or backfilled), not a recorded moment. */
+  /** True when `at` is a reconstruction (backfilled), not a recorded moment. */
   approximate: boolean;
   /** Context: where it happened. Stable contexts carry habits. Source: Wood & Neal 2007. */
   context: string | null;

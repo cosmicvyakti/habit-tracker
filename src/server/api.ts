@@ -1,6 +1,5 @@
 import { createMiddleware, createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { importSchema } from "../lib/schema";
 import { signInSchema } from "../lib/session";
 import * as auth from "./auth.server";
 import * as db from "./db.server";
@@ -21,11 +20,6 @@ export const pushOps = createServerFn({ method: "POST" })
   .middleware([signedIn])
   .validator(z.object({ ops: z.array(z.unknown()).min(1).max(100) }))
   .handler(({ data }) => applyOps(data.ops));
-
-export const importV1 = createServerFn({ method: "POST" })
-  .middleware([signedIn])
-  .validator(importSchema)
-  .handler(({ data }) => db.importData(data.habits, data.events));
 
 export const getSession = createServerFn({ method: "GET" }).handler(() => ({ signedIn: auth.isSignedIn() }));
 
