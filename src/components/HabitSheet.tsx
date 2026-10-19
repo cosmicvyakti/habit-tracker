@@ -42,18 +42,22 @@ export function intention(h: Habit): string | null {
 
 export function missText(state: MissState, f: Frequency): string {
   const unit = UNIT[f];
-  if (state === "missed-once") return `Missed ${LAST[f]}. Don't miss twice: do it ${THIS[f]}.`;
-  if (state === "missed-twice") return `Missed 2 or more ${unit}s in a row. Pick it back up ${THIS[f]}.`;
+  // Facts and the next step, never blame: one miss doesn't set a habit back (Lally et al. 2010).
+  if (state === "missed-once") return `Missed ${LAST[f]}. Doing it ${THIS[f]} keeps it on track.`;
+  if (state === "missed-twice") return `It's been a few ${unit}s. Doing it ${THIS[f]} is what counts.`;
   if (state === "not-started") return `Log it for the first time ${THIS[f]}.`;
   return "No double misses right now.";
 }
 
-/** The word and tone for each never-miss-twice state. The word carries the state; the tone repeats it. */
+/**
+ * The word and tone for each never-miss-twice state. The word carries the state; the tone repeats it. Two misses get a
+ * warning, not an error: red would say the habit failed, and picking it back up is all that matters.
+ */
 export const MISS_BADGE = {
   "not-started": { variant: "neutral", label: "Not started" },
   "on-track": { variant: "success", label: "On track" },
   "missed-once": { variant: "warn", label: "Missed once" },
-  "missed-twice": { variant: "danger", label: "Missed twice" },
+  "missed-twice": { variant: "warn", label: "Missed twice" },
 } as const;
 
 export const pct = (r: number | null) => (r === null ? "Not yet" : `${Math.round(r * 100)}%`);
