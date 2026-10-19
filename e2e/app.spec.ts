@@ -307,6 +307,41 @@ for (const theme of ["light", "dark"]) {
   }
 }
 
+// Every transition runs on one of Lime's two curves and one of its durations, never the browser's ease, linear or 0s.
+// Reads computed styles, so a class that compiles to a fallback fails here even when the source looks right.
+const CURVES = ["cubic-bezier(0.4, 0, 0.2, 1)", "cubic-bezier(0.4, 0, 1, 1)"];
+const DURATIONS = ["0.08s", "0.14s", "0.2s", "0.28s"];
+
+async function transitions(page: Page) {
+  return page.evaluate(() =>
+    [...document.querySelectorAll("*")].flatMap((el) => {
+      const style = getComputedStyle(el);
+      if (style.transitionProperty === "all" && style.transitionDuration === "0s") return [];
+      const name = `${el.tagName.toLowerCase()}${el.getAttribute("data-slot") ? `[data-slot=${el.getAttribute("data-slot")}]` : ""}`;
+      return [{ name, durations: style.transitionDuration.split(", "), curves: style.transitionTimingFunction.split(/,\s*(?![^(]*\))/) }];
+    }),
+  );
+}
+
+for (const route of ["/", "/plan", "/check-in", "/insights", "/log"]) {
+  test(`every transition on ${route} uses Lime's curves and durations`, async ({ page }) => {
+    await page.goto(route);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    const wrong = (await transitions(page)).filter(
+      (t) => t.durations.some((d) => !DURATIONS.includes(d)) || t.curves.some((c) => !CURVES.includes(c)),
+    );
+    expect(wrong.map((t) => `${t.name}: ${t.durations.join(" ")} ${t.curves.join(" ")}`)).toEqual([]);
+  });
+}
+
+test("reduced motion stops every transition", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  const moving = (await transitions(page)).filter((t) => t.durations.some((d) => d !== "0s"));
+  expect(moving.map((t) => `${t.name}: ${t.durations.join(" ")}`)).toEqual([]);
+});
+
 test("the theme follows the system until the user picks one", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "dark" });
   await page.goto("/");
