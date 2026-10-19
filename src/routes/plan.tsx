@@ -42,7 +42,8 @@ function PlanForm({ habit }: { habit: Habit | undefined }) {
 
   const form = useForm({
     defaultValues: defaults,
-    validators: { onBlur: planSchema, onSubmit: planSchema },
+    // onChange too, so an error clears as soon as it's fixed; each field shows its errors only once you've left it.
+    validators: { onChange: planSchema, onBlur: planSchema, onSubmit: planSchema },
     onSubmit: async ({ value }) => {
       const plan = planSchema.parse(value);
       if (habit) enqueue({ kind: "plan", id: habit.id, at: now(), plan });
@@ -78,7 +79,8 @@ function PlanForm({ habit }: { habit: Habit | undefined }) {
           <form.Field key={name} name={name}>
             {(field) => {
               // The blur and submit validators can report the same issue; show it once.
-              const errors = [...new Set(field.state.meta.errors.map((e) => e?.message).filter(Boolean))];
+              const shown = field.state.meta.isBlurred || form.state.submissionAttempts > 0;
+              const errors = shown ? [...new Set(field.state.meta.errors.map((e) => e?.message).filter(Boolean))] : [];
               return (
                 <Field name={name} invalid={errors.length > 0}>
                   <FieldLabel>{label}</FieldLabel>
