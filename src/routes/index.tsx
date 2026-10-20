@@ -90,7 +90,7 @@ function Today() {
       )}
       {sheetHabit && (
         <HabitSheet
-          key={sheetHabit.id}
+          key={`${sheetHabit.id}:${sheetHabit.cue}:${sheetHabit.context}`}
           habit={sheetHabit}
           log={log}
           open={sheet.open}

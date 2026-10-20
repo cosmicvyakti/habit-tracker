@@ -322,6 +322,30 @@ test("backfill a past day from the period row, and bring back a cleared period w
   await expect(backfill).toContainText("Retracted");
 });
 
+test("a plan edited on another device reaches the next log's place", async ({ page, browser }) => {
+  await page.goto("/");
+  // Once opened, the sheet stays mounted with the plan it opened with.
+  const sheet = await openSheet(page, "read 20 pages");
+  await page.keyboard.press("Escape");
+  await expect(sheet).toBeHidden();
+
+  const phone = await browser.newPage({ storageState: AUTH_FILE });
+  await phone.goto("/");
+  await (await openSheet(phone, "read 20 pages")).getByRole("button", { name: "Edit plan" }).click();
+  await phone.getByLabel("Where").fill("the desk");
+  const synced = phone.waitForResponse((r) => r.url().includes("/_serverFn/") && r.request().method() === "POST");
+  await phone.getByRole("button", { name: "Save plan" }).click();
+  await synced;
+  await phone.close();
+
+  // Coming back to the app fetches the new plan, and the next log takes its place.
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  await openSheet(page, "read 20 pages");
+  await expect(sheet.getByText("After I pour my morning coffee, I will read 20 pages at the desk.")).toBeVisible();
+  await sheet.getByRole("button", { name: "Add details to the next log" }).click();
+  await expect(sheet.getByLabel("Place")).toHaveValue("the desk");
+});
+
 test("a page left open overnight moves on to the new day", async ({ page }) => {
   await page.clock.install();
   await page.goto("/");
