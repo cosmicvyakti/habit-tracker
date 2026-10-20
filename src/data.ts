@@ -1,5 +1,6 @@
 import { type QueryClient, queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo, useSyncExternalStore } from "react";
+import { toKey } from "./lib/dates";
 import type { Log } from "./lib/model";
 import { withOps } from "./lib/ops";
 import { type Op, opSchema } from "./lib/schema";
@@ -205,3 +206,17 @@ export function useLog() {
 
 export const newId = () => crypto.randomUUID();
 export const now = () => new Date().toISOString();
+
+const onVisibility = (cb: () => void) => {
+  document.addEventListener("visibilitychange", cb);
+  return () => document.removeEventListener("visibilitychange", cb);
+};
+
+/** Today's local date key, refreshed when the app comes back into view, so an app left open overnight moves on. */
+export function useToday() {
+  return useSyncExternalStore(
+    onVisibility,
+    () => toKey(new Date()),
+    () => toKey(new Date()),
+  );
+}

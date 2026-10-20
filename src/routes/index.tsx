@@ -6,9 +6,9 @@ import { Card } from "@/components/lime/ui/card";
 import { Empty, EmptyActions, EmptyDescription, EmptyTitle } from "@/components/lime/ui/empty";
 import { List, ListItem } from "@/components/lime/ui/list";
 import HabitSheet, { intention, missText, title, useHabitActions } from "../components/HabitSheet";
-import { logQuery, useLog } from "../data";
+import { logQuery, useLog, useToday } from "../data";
 import { countFrom, donePeriods, periodStats } from "../lib/consistency";
-import { Frequency, FREQUENCY_LABEL, periodKey } from "../lib/dates";
+import { Frequency, FREQUENCY_LABEL, fromKey, periodKey } from "../lib/dates";
 import { habitStart, Log } from "../lib/model";
 import { planToday, TodayHabit } from "../lib/today";
 
@@ -24,7 +24,7 @@ const minuteClock = (m: number) => clock(new Date(2000, 0, 1, Math.floor(m / 60)
 
 function Today() {
   const log = useLog();
-  const now = new Date();
+  const now = fromKey(useToday());
   const plan = planToday(log, now);
   const dailies = log.habits.filter((h) => !h.archivedAt && h.frequency === "daily");
   const dailyDone = dailies.filter((h) => plan.done.some((i) => i.habit === h)).length;

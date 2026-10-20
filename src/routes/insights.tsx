@@ -9,7 +9,7 @@ import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, Tabl
 import CurveChart from "../components/CurveChart";
 import { count, MISS_BADGE, missText, pct, title, UNIT } from "../components/HabitSheet";
 import RangeFilter from "../components/RangeFilter";
-import { logQuery, useLog } from "../data";
+import { logQuery, useLog, useToday } from "../data";
 import { countFrom, donePeriods, periodStats } from "../lib/consistency";
 import { fitAutomaticity, TRUST_MIN_POINTS, TRUST_MIN_SPAN_DAYS, trustFit } from "../lib/curve";
 import { addDays, dayRange, FREQUENCY_LABEL, longestStreak } from "../lib/dates";
@@ -35,7 +35,8 @@ function Insights() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const log = useLog();
-  const today = useMemo(() => new Date(), []);
+  const day = useToday();
+  const today = useMemo(() => new Date(), [day]);
   const habit = log.habits.find((h) => h.id === search.habit) ?? log.habits.find((h) => !h.archivedAt);
 
   if (!habit) {

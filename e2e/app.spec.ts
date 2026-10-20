@@ -322,6 +322,25 @@ test("backfill a past day from the period row, and bring back a cleared period w
   await expect(backfill).toContainText("Retracted");
 });
 
+test("a page left open overnight moves on to the new day", async ({ page }) => {
+  await page.clock.install();
+  await page.goto("/");
+  await expect(page.getByRole("region", { name: "Done today" }).getByText("Stretch for 5 minutes")).toBeVisible();
+  const sheet = await openSheet(page, "stretch for 5 minutes");
+  const current = sheet.locator('[aria-current="date"]');
+  await expect(current).toHaveText(new RegExp(`^\\S+ ${new Date().getDate()}\\b`));
+  await page.keyboard.press("Escape");
+  await expect(sheet).toBeHidden();
+
+  // The app sits in the background past midnight, then comes back.
+  const tomorrow = new Date(Date.now() + 86_400_000);
+  await page.clock.setSystemTime(tomorrow);
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  await expect(page.getByRole("region", { name: "Next up" })).toContainText(/stretch for 5 minutes/i);
+  await openSheet(page, "stretch for 5 minutes");
+  await expect(current).toHaveText(new RegExp(`^\\S+ ${tomorrow.getDate()}\\b`));
+});
+
 test("too many wrong passwords lock sign-in for that address", async ({ browser }) => {
   // Its own address, as Cloudflare would report it, so the lock can't reach the other tests.
   const context = await browser.newContext({

@@ -16,7 +16,7 @@ import { Field, FieldLabel } from "@/components/lime/ui/field";
 import { Input } from "@/components/lime/ui/input";
 import { Radio, RadioGroup } from "@/components/lime/ui/radio";
 import { useToast } from "@/components/lime/ui/toast";
-import { enqueue, newId, now } from "../data";
+import { enqueue, newId, now, useToday } from "../data";
 import { countFrom, donePeriods, MissState, periodStats } from "../lib/consistency";
 import { Frequency, FREQUENCY_LABEL, fromKey, periodKey } from "../lib/dates";
 import { activeEvents, Habit, HabitEvent, habitStart, Log } from "../lib/model";
@@ -160,7 +160,8 @@ export default function HabitSheet({
 }) {
   const id = useId();
   const navigate = useNavigate();
-  const today = useMemo(() => new Date(), []);
+  const day = useToday();
+  const today = useMemo(() => new Date(), [day]);
   const { events, logNow, togglePeriod } = useHabitActions(h, log);
   const f = h.frequency;
   const done = donePeriods(events, f);
