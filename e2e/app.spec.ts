@@ -295,6 +295,33 @@ test("logs made offline in two tabs both sync", async ({ page, context, browser 
   await fresh.close();
 });
 
+test("backfill a past day from the period row, and bring back a cleared period with Undo", async ({ page }) => {
+  await page.goto("/");
+  const sheet = await openSheet(page, "stretch for 5 minutes");
+  const today = sheet.locator('[aria-current="date"]');
+  const yesterday = sheet.getByRole("button", { name: new RegExp(`^\\S+ ${new Date(Date.now() - 86_400_000).getDate()}\\b`) });
+  await expect(today).toHaveAttribute("aria-pressed", "true");
+  await expect(yesterday).toHaveAttribute("aria-pressed", "false");
+
+  // One tap on an empty past day backfills it; a second tap takes it back.
+  await yesterday.click();
+  await expect(yesterday).toHaveAttribute("aria-pressed", "true");
+  await yesterday.click();
+  await expect(yesterday).toHaveAttribute("aria-pressed", "false");
+
+  // Clearing today takes every log in it, so the toast's Undo logs them again.
+  await today.click();
+  await expect(today).toHaveAttribute("aria-pressed", "false");
+  await page.locator('[data-slot="toast"]').filter({ hasText: /Removed \d+ logs of stretch/ }).getByRole("button", { name: "Undo" }).click();
+  await expect(today).toHaveAttribute("aria-pressed", "true");
+
+  // Nothing leaves the raw log: the backfill is there, approximate and retracted.
+  await page.goto("/log?habit=seed-stretch");
+  const backfill = page.getByRole("row").filter({ hasText: "Approximate" });
+  await expect(backfill).toHaveCount(1);
+  await expect(backfill).toContainText("Retracted");
+});
+
 test("too many wrong passwords lock sign-in for that address", async ({ browser }) => {
   // Its own address, as Cloudflare would report it, so the lock can't reach the other tests.
   const context = await browser.newContext({
