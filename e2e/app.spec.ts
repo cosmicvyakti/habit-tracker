@@ -5,16 +5,14 @@ import { AUTH_FILE, EMAIL, PASSWORD } from "../playwright.config";
 test.describe.configure({ mode: "serial" });
 
 async function expectNoAxeViolations(page: Page) {
-  // A dialog fading in has see-through text, which axe measures as low contrast. Wait out every animation that ends,
-  // two frames on: Base UI starts a dialog's transition only on the frame after it opens.
+  // A dialog fading in has see-through text, which axe measures as low contrast. Wait for a frame where nothing moves:
+  // Base UI starts a dialog's transition a frame or more after it opens, later still on a busy machine.
   await page.evaluate(async () => {
-    for (let i = 0; i < 2; i++) await new Promise(requestAnimationFrame);
-    await Promise.all(
-      document
-        .getAnimations()
-        .filter((a) => a.effect?.getComputedTiming().endTime !== Infinity)
-        .map((a) => a.finished.catch(() => {})),
-    );
+    const moving = () =>
+      document.querySelector("[data-starting-style], [data-ending-style]") !== null ||
+      document.getAnimations().some((a) => a.playState === "running" && a.effect?.getComputedTiming().endTime !== Infinity);
+    do await new Promise(requestAnimationFrame);
+    while (moving());
   });
   const { violations } = await new AxeBuilder({ page }).analyze();
   expect(violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(", ")}`)).toEqual([]);
