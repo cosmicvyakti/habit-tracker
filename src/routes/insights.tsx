@@ -37,7 +37,8 @@ function Insights() {
   const log = useLog();
   const day = useToday();
   const today = useMemo(() => new Date(), [day]);
-  const habit = log.habits.find((h) => h.id === search.habit) ?? log.habits.find((h) => !h.archivedAt);
+  const habit =
+    log.habits.find((h) => h.id === search.habit) ?? log.habits.find((h) => !h.archivedAt) ?? log.habits[0];
 
   if (!habit) {
     return (

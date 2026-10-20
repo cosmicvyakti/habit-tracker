@@ -532,8 +532,10 @@ test("archive every habit, then the empty states", async ({ page }) => {
 
   await expect(page.getByRole("heading", { name: "No habits yet" })).toBeVisible();
   await expectNoAxeViolations(page);
+  // Insights still shows an archived habit, as the archive dialog promised.
   await page.goto("/insights");
-  await expect(page.getByRole("heading", { name: "No habits yet" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Automaticity" })).toBeVisible();
+  await expect(page.getByText("Stretch for 5 minutes (archived)")).toBeVisible();
   await expectNoAxeViolations(page);
   // The archived habit's log stays.
   await page.goto("/log");
