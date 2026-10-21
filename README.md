@@ -10,7 +10,7 @@ The UI uses the [Lime design system](https://design.how/systems/lime) from desig
 
 - **Today**: the week, Monday first, with a ring on each day for how much of its daily plan was done. Step to the week before or after, or pick a day. Below it, that day's habits: tap a habit's check to check it off. The check draws in, then the habit moves down to Completed. Tap it again to clear it, with Undo. A check on a past day is a backfill, marked approximate.
 - **Stats** for a week, month, quarter, or year, kept in the URL: the completion rate and its change from the range before, a chart by day, week, or month, a calendar heat map of daily habits, each habit's rate, status, and longest run, and which weekdays and times of day work best.
-- **Habits**: every habit, with its last seven periods. A habit is a name and how often: daily, weekly, monthly, or yearly. Edit or archive it from the same form.
+- **Habits**: every habit, grouped by how often, with its last seven periods and how many of them were done. A habit is a name and how often: daily, weekly, monthly, or yearly. Edit or archive it from the same form.
 - **Works offline.** Install it from the browser as an app. Check-ins and edits save on the device first and sync when the server answers.
 - **One account**, with an email and password. The sidebar shows who is signed in.
 

@@ -44,11 +44,13 @@ function SignIn() {
   });
 
   return (
-    <main className="mx-auto w-full max-w-sm px-4 pt-4 pb-8 sm:px-6 sm:pt-8">
-      <h1 className="title-page">Sign in</h1>
+    <main className="flex w-full max-w-sm flex-col gap-y-5 pbe-8">
+      <h1 className="text-2xl font-semibold tracking-tight">
+        <span className="sr-only">Sign in to </span>Habit tracker
+      </h1>
       <form
         ref={formRef}
-        className="mt-8 flex flex-col gap-4"
+        className="flex flex-col gap-4"
         noValidate
         onSubmit={(e) => {
           e.preventDefault();
@@ -92,7 +94,7 @@ function SignIn() {
         )}
         <form.Subscribe selector={(s) => s.isSubmitting}>
           {(submitting) => (
-            <Button type="submit" size="lg" pending={submitting} className="mt-4 w-full">
+            <Button type="submit" size="lg" pending={submitting} className="mbs-4 w-full">
               Sign in
             </Button>
           )}

@@ -31,10 +31,12 @@
   /* The grounds: the page is `ground` and a card on it `card`, white on warm grey by day. */
   --ground: var(--surface);
   --card: var(--raised);
-  /* The one chart series, the ink. Done in a calendar is the lime's line step, Lime's own "done" mark. */
+  /* The one chart series, the ink, which is also what "done" wears everywhere: a checked row, a day's ring, a full day
+     in the heat map. Spendly keeps the lime's line step for a second chart series, never for a state. */
   --series-1: var(--ink);
 
-  /* The highlight's length where Lime zeroes its durations: a colour fade is not motion. */
+  /* How long a lead chart takes to draw in on arrival; also the highlight's length where Lime zeroes its durations,
+     since a colour fade is not motion. */
   --duration-arrive: 600ms;
 }
 /* By night the page lifts to `raised` and a card sits a step below it, so the two trade grounds at dusk. */
@@ -53,6 +55,8 @@
   --color-ground: var(--ground);
   --color-card: var(--card);
   --color-series-1: var(--series-1);
+  /* A dashboard's cap, Spendly's: Stats grows past the 64rem other pages stop at, so its cards can sit side by side. */
+  --container-wide: 88rem;
   /* An item just changed: Lime's wash, fading to its own ground. */
   --animate-highlight: highlight var(--dur-slow) var(--ease-out) both;
 }
@@ -68,20 +72,37 @@
   }
 }
 
-/* The page's ground, on the phone and behind the desktop's chrome. */
+/* The page's ground, on the phone and behind the desktop's chrome. The root keeps the browser's own text size and the
+   body takes Lime's 14px, as where Lime's scope is <body> (Spendly): Lime's widths are in rem, so with the scope on
+   <html> a max-w-5xl page measured 64 x 14px and came out an eighth narrower than Spendly's. */
 html.lime {
+  font-size: medium;
   background: var(--ground);
   /* A transition can run to and from `auto`. */
   interpolate-size: allow-keywords;
   overflow-wrap: break-word;
   font-synthesis: none;
+  /* No orphan on a paragraph's last line, and no rubber band past the page's end dragging the chrome with it. */
+  text-wrap: pretty;
+  overscroll-behavior-y: none;
+}
+
+body {
+  font-size: var(--text-sm);
 }
 
 @layer base {
   h1,
   h2,
-  h3 {
+  h3,
+  h4 {
     text-wrap: balance;
+  }
+  /* A double-click on a control does not select its label; text and links stay selectable. */
+  button,
+  [role="button"] {
+    user-select: none;
+    -webkit-user-select: none;
   }
   /* Every press is answered: Lime's Button scales, and every other pressable dims while held. In `base`, so a
      component's own `active:` wins. */
@@ -115,10 +136,20 @@ html.lime {
   padding-block-end: calc(--spacing(5) + env(safe-area-inset-bottom, 0px));
 }
 
-/* Touch, by input and not by width: Lime's default control grows to a finger's 44px. */
+/* Touch, by input and not by width: Lime's default control grows to a finger's 44px, and the two small text roles
+   step up one size, as a phone's own apps set body text at 16. The body goes on <body>, not the html scope, so the
+   rem stays put. Unlayered and after Lime, so `.text-xs` here wins over the utility. */
 @media (pointer: coarse) {
   .lime {
     --control-md: 44px;
+  }
+  body {
+    font-size: var(--text-base);
+    line-height: 24px;
+  }
+  .lime .text-xs {
+    font-size: var(--text-sm);
+    line-height: 20px;
   }
 }
 
@@ -172,22 +203,47 @@ html.lime {
   view-transition-class: habit-row;
 }
 
-/* A heat map's cell: how much of the day's plan was done, in four steps of the lime's line. */
+/* A heat map's cell: how much of the day's plan was done, in four steps of the ink. */
 .heat {
   background-color: var(--surface-2);
 }
 .heat[data-level="1"] {
-  background-color: color-mix(in oklab, var(--accent-line) 30%, var(--surface-2));
+  background-color: color-mix(in oklab, var(--ink) 25%, var(--surface-2));
 }
 .heat[data-level="2"] {
-  background-color: color-mix(in oklab, var(--accent-line) 60%, var(--surface-2));
+  background-color: color-mix(in oklab, var(--ink) 55%, var(--surface-2));
 }
 .heat[data-level="3"] {
-  background-color: var(--accent-line);
+  background-color: var(--ink);
 }
 /* Nothing planned, such as a day before the first habit or one still to come: a fainter blank than a day missed. */
 .heat[data-level="none"] {
   background-color: color-mix(in oklab, var(--surface-2) 45%, transparent);
+}
+
+/* A chart drawn as a list of parts, such as Stats' bars and meters, answers a hover as Spendly's do: the part pointed
+   at, or focused, stays as it is and the others step back. A fade of opacity, so it runs for everyone. */
+.linked > * {
+  transition-property: opacity;
+  transition-duration: var(--dur-fast);
+  transition-timing-function: var(--ease-out);
+}
+.linked:has(> :is(:hover, :focus-within)) > :not(:hover, :focus-within) {
+  opacity: 0.4;
+}
+
+/* The lead chart draws in: its plot is uncovered from the left edge to the right over the arrival token, so the bars
+   arrive in the order their days ran. Keyed by its range, so a new range draws in again. */
+@media (prefers-reduced-motion: no-preference) {
+  .draw-in {
+    clip-path: inset(0);
+    transition: clip-path var(--duration-arrive) var(--ease-out);
+  }
+  @starting-style {
+    .draw-in {
+      clip-path: inset(0 100% 0 0);
+    }
+  }
 }
 
 /* A quarter's or a year's days as columns of weeks: `--weeks` columns, each at least 10px, so a year scrolls sideways

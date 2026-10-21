@@ -1,7 +1,7 @@
 import { Dialog } from "@base-ui/react/dialog";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type RefObject } from "react";
-import { CalendarDays, ChartLine, ChevronSort, Close, Icon, ListChecks, LogOut, Menu } from "@/components/lime/icon";
+import { CalendarDays, ChartLine, ChevronSort, Icon, ListChecks, LogOut, PanelLeftClose, PanelLeftOpen } from "@/components/lime/icon";
 import { Button } from "@/components/lime/ui/button";
 import {
   DropdownMenu,
@@ -32,18 +32,32 @@ const PLACES = [
 const HERE = "aria-[current=page]:bg-surface aria-[current=page]:font-semibold aria-[current=page]:text-fg";
 // The sidebar's rows: the name beside its icon, Lime's default control height.
 const SIDE_ROW = `flex h-(--control-md) items-center gap-x-3 rounded-md px-3 text-base text-fg-3 transition-colors duration-(--dur-instant) ease-out hover:bg-surface hover:text-fg ${HERE}`;
-// The phone's rows: a finger's height, on the page's own ground.
+// The phone's rows: a finger's height, on the page's own ground, the icon quieter than the name.
 const PHONE_ROW =
   "flex h-12 items-center gap-x-4 rounded-md px-3 text-base text-fg-2 transition-colors duration-(--dur-instant) ease-out active:bg-surface-2 aria-[current=page]:bg-surface-2 aria-[current=page]:font-semibold aria-[current=page]:text-fg";
 
-function Places({ className, onNavigate }: { className: string; onNavigate?: () => void }) {
+function Places({
+  className,
+  gap,
+  quietIcon,
+  onNavigate,
+}: {
+  className: string;
+  gap: string;
+  quietIcon?: boolean;
+  onNavigate?: () => void;
+}) {
   return (
-    <ul className="flex flex-col gap-y-1">
+    <ul className={cn("flex flex-col", gap)}>
       {PLACES.map((p) => (
         <li key={p.to}>
           <Link to={p.to} activeOptions={{ exact: p.exact, includeSearch: false }} onClick={onNavigate} className={className}>
-            <Icon icon={p.icon} size={20} />
-            {p.label}
+            {({ isActive }) => (
+              <>
+                <Icon icon={p.icon} size={20} className={cn(quietIcon && !isActive && "text-fg-3")} />
+                {p.label}
+              </>
+            )}
           </Link>
         </li>
       ))}
@@ -52,10 +66,10 @@ function Places({ className, onNavigate }: { className: string; onNavigate?: () 
 }
 
 /**
- * Who is signed in, at the foot of the navigation: the initial in a disc and the email, which opens the theme and Sign
- * out. There is no settings page, so these two live here.
+ * Who is signed in, at the foot of the navigation, as Spendly's phone navigation shows them: the initial in a disc, the
+ * name over the email, which opens the theme and Sign out. There is no settings page, so these two live here.
  */
-function Account({ className }: { className: string }) {
+function Account({ className, disc }: { className: string; disc: string }) {
   const email = useEmail();
   const { dark, toggle } = useTheme();
   const { signOut, busy, dialog } = useSignOut();
@@ -73,20 +87,24 @@ function Account({ className }: { className: string }) {
             {/* fg-2 on the disc, not fg-3: a single letter has no word shape to be guessed from. */}
             <span
               aria-hidden="true"
-              className="grid size-8 shrink-0 place-items-center rounded-full bg-surface-2 text-base font-semibold text-fg-2"
+              className={cn("grid shrink-0 place-items-center rounded-full bg-surface-2 text-lg font-semibold text-fg-2", disc)}
             >
               {(email?.[0] ?? "?").toUpperCase()}
             </span>
-            <span className="min-w-0 flex-1 truncate text-sm text-fg-2">
-              {email ? (
-                <>
+            {email ? (
+              <span className="min-w-0 flex-1">
+                {/* The account has no name of its own, so the email's first part stands for it. */}
+                <span aria-hidden="true" className="block truncate font-semibold text-fg">
+                  {email.split("@")[0]}
+                </span>
+                <span className="block truncate text-xs text-fg-3">
                   <span className="sr-only">Account, signed in as </span>
                   {email}
-                </>
-              ) : (
-                "Account"
-              )}
-            </span>
+                </span>
+              </span>
+            ) : (
+              <span className="min-w-0 flex-1 truncate font-semibold text-fg">Account</span>
+            )}
             <Icon icon={ChevronSort} size={16} className="text-fg-3" />
           </DropdownMenuTrigger>
         </div>
@@ -119,11 +137,11 @@ export function Sidebar() {
       className="lime sticky inset-bs-0 flex h-dvh w-60 shrink-0 flex-col bg-page text-fg after:absolute after:inset-y-0 after:inset-s-full after:w-(--radius-panel) after:bg-page phone:hidden"
     >
       <nav aria-label="Main" className="flex min-h-0 flex-1 flex-col overflow-y-auto p-3 pbs-6">
-        <Places className={SIDE_ROW} />
+        <Places className={SIDE_ROW} gap="gap-2" />
       </nav>
       {/* Pinned under the scroller, so who is signed in stays in sight whatever the rows above hold. */}
       <div className="shrink-0 p-3">
-        <Account className="h-12 hover:bg-surface data-popup-open:bg-surface" />
+        <Account className="h-14 hover:bg-surface data-popup-open:bg-surface" disc="size-8" />
       </div>
     </aside>
   );
@@ -145,14 +163,15 @@ export function TopBar() {
       data-scrolled={scrolled || undefined}
       className="sticky inset-bs-0 z-20 -mx-4 hidden border-be border-transparent bg-ground pbs-safe transition-colors duration-(--dur-fast) ease-out data-scrolled:border-line phone:block"
     >
-      <div className="top-bar-row h-14 px-2">
+      <div className="top-bar-row h-12 px-2">
         <Button variant="ghost" size="icon" aria-label="Open navigation" onClick={() => setOpen(true)} className="justify-self-start">
-          <Icon icon={Menu} size={20} />
+          <Icon icon={PanelLeftOpen} size={20} />
         </Button>
         {/* The page's h1 says it to a screen reader; this is for the eye. */}
         <p aria-hidden="true" className="truncate text-center text-xl font-semibold tracking-tight">
           {title}
         </p>
+        {/* Kept for a page's one icon action, so the title stays centred. */}
         <span />
       </div>
       <NavPage open={open} onOpenChange={setOpen} />
@@ -172,10 +191,10 @@ function NavPage({ open, onOpenChange }: { open: boolean; onOpenChange: (open: b
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal container={container}>
         <Dialog.Popup className="navpage fixed inset-0 z-(--z-dialog) flex flex-col bg-ground pbs-safe pbe-safe text-fg">
-          <div className="flex h-14 shrink-0 items-center gap-x-1 px-2">
+          <div className="flex h-12 shrink-0 items-center gap-x-1 px-2">
             {/* Where the menu button stood, so one spot opens and shuts it. */}
             <Dialog.Close aria-label="Close navigation" render={<Button variant="ghost" size="icon" />}>
-              <Icon icon={Close} size={20} />
+              <Icon icon={PanelLeftClose} size={20} />
             </Dialog.Close>
             {/* The wordmark is for the eye; the dialog is named for what it is. */}
             <Dialog.Title className="sr-only">Navigation</Dialog.Title>
@@ -184,10 +203,10 @@ function NavPage({ open, onOpenChange }: { open: boolean; onOpenChange: (open: b
             </span>
           </div>
           <nav aria-label="Main" className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-3 pbs-4">
-            <Places className={PHONE_ROW} onNavigate={close} />
+            <Places className={PHONE_ROW} gap="gap-y-0.5" quietIcon onNavigate={close} />
           </nav>
           <div className="shrink-0 border-bs border-line p-3">
-            <Account className="h-14 active:bg-surface-2" />
+            <Account className="h-16 active:bg-surface-2" disc="size-10" />
           </div>
         </Dialog.Popup>
       </Dialog.Portal>

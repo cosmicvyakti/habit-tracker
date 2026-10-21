@@ -54,8 +54,9 @@ test("add a habit with just a name and how often", async ({ page }) => {
   await dialog.getByRole("radio", { name: "Weekly" }).click();
   await dialog.getByRole("button", { name: "Add habit" }).click();
   await expect(dialog).toBeHidden();
-  const row = page.getByRole("main").getByRole("button", { name: /^Read 20 pages/ });
-  await expect(row).toContainText("Weekly · since");
+  // It lands in the card for its frequency.
+  const row = page.getByRole("region", { name: "Weekly" }).getByRole("button", { name: /^Read 20 pages/ });
+  await expect(row).toContainText("Since");
 
   // The row opens the same form on the habit.
   await row.click();
@@ -101,8 +102,8 @@ test("pick another day of the week and check a habit off for it", async ({ page 
 
   await check(page, STRETCH).click();
   const done = page.getByRole("region", { name: /^Completed/ }).getByRole("checkbox", { name: STRETCH });
-  // A past day's check has no real time, so it says only that it was done.
-  await expect(done).toContainText(/Done$/);
+  // A past day's check has no real time, so the row shows none at its end.
+  await expect(done).toContainText(/Daily$/);
   await expect(day.getByRole("radio", { checked: true })).toHaveAccessibleName(/1 of 1 daily habits done/);
 
   await page.getByRole("link", { name: "Go to today" }).click();
@@ -130,7 +131,8 @@ test("stats switch between week, month, quarter and year", async ({ page }) => {
   await expect(page).toHaveURL(/range=month&at=/);
   await expect(page.getByRole("button", { name: "Next month" })).toBeEnabled();
   await page.getByRole("radio", { name: "Year" }).click();
-  await expect(page.getByRole("heading", { name: "By month" })).toBeVisible();
+  await expect(page).toHaveURL(/range=year/);
+  await expect(page.getByRole("heading", { name: "Daily habits" })).toBeVisible();
 });
 
 test("log offline, then sync when the server answers again", async ({ page, browser }) => {
@@ -340,10 +342,11 @@ for (const theme of ["light", "dark"]) {
   }
 }
 
-// Every transition runs on one of Lime's two curves and one of its durations, never the browser's ease, linear or 0s.
-// Reads computed styles, so a class that compiles to a fallback fails here even when the source looks right.
+// Every transition runs on one of Lime's two curves and one of its durations, or the app's one arrival (Stats' lead chart
+// drawing in, app.css `--duration-arrive`), never the browser's ease, linear or 0s. Reads computed styles, so a class
+// that compiles to a fallback fails here even when the source looks right.
 const CURVES = ["cubic-bezier(0.4, 0, 0.2, 1)", "cubic-bezier(0.4, 0, 1, 1)"];
-const DURATIONS = ["0.08s", "0.14s", "0.2s", "0.28s"];
+const DURATIONS = ["0.08s", "0.14s", "0.2s", "0.28s", "0.6s"];
 
 async function transitions(page: Page) {
   return page.evaluate(() =>

@@ -124,7 +124,7 @@ Not in the system yet, and what to build meanwhile.
 
 ## Icons
 Import a glyph beside Icon from the path under Imports and pass it in: `<Icon icon={Add} size={16}/>`. These are all the names; another needs adding to that file first.
-Add, ArrowDown, ArrowRight, ArrowUp, Attachment, Checkmark, CheckmarkFilled, ChevronDown, ChevronRight, ChevronSort, ChevronUp, Close, Copy, ErrorFilled, Image, Information, Menu, Play, Receipt, Renew, Search, Send, Subtract, Time, Upload, Wallet, PiggyBank, Warning, WarningFilled, ChevronLeft, ArrowLeft, Pause, OverflowMenuHorizontal, Folder, Star, Plus, Delete, Cafe, ShoppingBag, Notification, Locked, Undo, Edit, CircleDash, Location, Moon, Sun, CalendarDays, ChartLine, LogOut, ListChecks
+Add, ArrowDown, ArrowRight, ArrowUp, Attachment, Checkmark, CheckmarkFilled, ChevronDown, ChevronRight, ChevronSort, ChevronUp, Close, Copy, ErrorFilled, Image, Information, Menu, Play, Receipt, Renew, Search, Send, Subtract, Time, Upload, Wallet, PiggyBank, Warning, WarningFilled, ChevronLeft, ArrowLeft, Pause, OverflowMenuHorizontal, Folder, Star, Plus, Delete, Cafe, ShoppingBag, Notification, Locked, Undo, Edit, CircleDash, Location, Moon, Sun, CalendarDays, ChartLine, LogOut, ListChecks, PanelLeftOpen, PanelLeftClose
 
 ## Tokens
 The closed list. Use a token through its class, never a raw value: colors are utilities named after the role (bg-surface, text-fg, border-line); sizes read the scale (text-sm, rounded-field, shadow-card, h-(--control-lg), duration-(--dur-fast)).

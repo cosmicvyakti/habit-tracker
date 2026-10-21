@@ -21,9 +21,8 @@
    - One declaration per line: --name: value; followed by a comment of the form job | used by.
    - A line that starts with == opens a token group. Keep both formats when you retune.
 
-   Font: Hanken Grotesk, SIL OFL, from Google Fonts. */
+   Font: Hanken Grotesk, SIL OFL. Its Google Fonts import is removed in this app, which sets Figtree (app.css). */
 
-@import url("https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&display=swap");
 
 [data-system="lime"], .lime {
   /* == Surfaces == */

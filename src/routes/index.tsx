@@ -9,6 +9,7 @@ import { Checkmark, ChevronLeft, ChevronRight, Icon } from "@/components/lime/ic
 import { Button } from "@/components/lime/ui/button";
 import { Empty, EmptyActions, EmptyDescription, EmptyTitle } from "@/components/lime/ui/empty";
 import { cn } from "@/lib/lime/utils";
+import { Card, CardTitle } from "../components/Card";
 import { title, useCheckIns } from "../components/habit";
 import PageHeader from "../components/PageHeader";
 import { logQuery, useLog, useToday } from "../data";
@@ -94,7 +95,7 @@ function Today() {
 
   const active = log.habits.some((h) => !h.archivedAt);
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-5">
       <PageHeader
         title={dayTitle(day, today)}
         aside={
@@ -111,8 +112,8 @@ function Today() {
             </Button>
           )
         }
-        below={<Week day={day} today={today} log={log} />}
       />
+      <Week day={day} today={today} log={log} />
       <p role="status" className="sr-only">
         {said}
       </p>
@@ -129,15 +130,13 @@ function Today() {
           </EmptyActions>
         </Empty>
       ) : !todo.length && !done.length ? (
-        <p className="text-base text-fg-2">No habits had started yet on this day.</p>
+        <p className="text-fg-2">No habits had started yet on this day.</p>
       ) : (
         <>
-          <section aria-labelledby="todo" className="flex flex-col gap-3">
-            <Heading id="todo" count={todo.length}>
-              To do
-            </Heading>
+          <Card labelledBy="todo">
+            <CardTitle id="todo" title="To do" count={todo.length} />
             {todo.length ? (
-              <ul data-list="todo" className="card-rows overflow-clip rounded-panel border border-line bg-card shadow-card">
+              <ul data-list="todo" className={ROWS}>
                 {todo.map((item, i) => {
                   const fresh = settling.has(item.habit.id);
                   return (
@@ -150,33 +149,31 @@ function Today() {
                 })}
               </ul>
             ) : (
-              <p className="text-base text-fg-2">Everything for {isToday ? "today" : "this day"} is checked off.</p>
+              <p className="text-fg-2">Everything for {isToday ? "today" : "this day"} is checked off.</p>
             )}
-          </section>
+          </Card>
 
           {done.length > 0 && (
-            <section aria-labelledby="done" className="flex flex-col gap-3">
-              <Heading id="done" count={done.length}>
-                Completed
-              </Heading>
-              <ul className="card-rows overflow-clip rounded-panel border border-line bg-card shadow-card">
+            <Card labelledBy="done">
+              <CardTitle id="done" title="Completed" count={done.length} />
+              <ul className={ROWS}>
                 {done.map((item) => (
-                  <Row key={item.habit.id} item={item} checked onToggle={() => uncheck(item)}>
-                    {item.loggedAt
-                      ? `Done at ${clock(item.loggedAt)}`
-                      : item.habit.frequency === "daily"
-                        ? "Done"
-                        : `Done ${THIS[item.habit.frequency]}`}
+                  // The time it was done stands at the row's end, where Spendly puts a row's figure.
+                  <Row key={item.habit.id} item={item} checked onToggle={() => uncheck(item)} at={item.loggedAt && clock(item.loggedAt)}>
+                    {item.loggedAt || item.habit.frequency === "daily" ? ONCE[item.habit.frequency] : `Done ${THIS[item.habit.frequency]}`}
                   </Row>
                 ))}
               </ul>
-            </section>
+            </Card>
           )}
         </>
       )}
     </div>
   );
 }
+
+// A card's rows: pulled into its padding, so a row's hover fill stops just short of the card's edge, a hairline between each.
+const ROWS = "-mx-3 -mbs-2 flex flex-col divide-y divide-line";
 
 const row = (id: string) => document.querySelector<HTMLElement>(`[data-habit="${id}"]`);
 
@@ -193,29 +190,22 @@ function moveRows(change: () => void, after: () => void) {
   document.startViewTransition(run);
 }
 
-function Heading({ id, count, children }: { id: string; count: number; children: string }) {
-  return (
-    <h2 id={id} className="flex items-baseline gap-2 text-lg font-semibold">
-      {children}
-      <span className="text-base font-normal text-fg-3 tabular-nums">{count}</span>
-    </h2>
-  );
-}
-
 /**
- * One habit for the day, as a checkbox: the round mark, then its name and when. At rest the mark's check is drawn
- * faint; checking fills it with ink and draws the check in (app.css, `.check-mark`).
+ * One habit for the day, as a checkbox: the round mark, then its name and when, and the time it was done at the end. At
+ * rest the mark's check is drawn faint; checking fills it with ink and draws the check in (app.css, `.check-mark`).
  */
 function Row({
   item,
   checked,
   fresh,
+  at,
   onToggle,
   children,
 }: {
   item: DayHabit;
   checked: boolean;
   fresh?: boolean;
+  at?: string | null;
   onToggle: () => void;
   children: string;
 }) {
@@ -228,22 +218,26 @@ function Row({
         checked={checked}
         onCheckedChange={onToggle}
         data-habit={h.id}
-        className="group flex min-h-16 w-full cursor-pointer items-center gap-4 px-5 py-3 text-start transition-colors duration-(--dur-instant) ease-out select-none hover:bg-surface-2 focus-visible:-outline-offset-2"
+        className="group flex min-h-14 w-full cursor-pointer items-center gap-x-3 rounded-md px-3 py-2 text-start transition-colors duration-(--dur-instant) ease-out select-none hover:bg-surface-2 focus-visible:-outline-offset-2"
       >
-        <span
-          data-fresh={fresh || undefined}
-          className={cn(
-            "check-mark grid size-6 shrink-0 place-items-center rounded-full border-2 transition-colors duration-(--dur-fast) ease-out",
-            checked ? "border-ink bg-ink text-fg-inverse" : "border-control text-line-strong group-hover:text-fg-3",
-          )}
-        >
-          {/* Keyed, so checking mounts a new check that draws itself in. */}
-          <Icon key={String(checked)} icon={Checkmark} size={16} strokeWidth={checked ? 3 : 2} />
+        {/* The mark's column is Spendly's 32px, so the names line up with a row that leads with a tile. */}
+        <span className="grid size-8 shrink-0 place-items-center">
+          <span
+            data-fresh={fresh || undefined}
+            className={cn(
+              "check-mark grid size-6 place-items-center rounded-full border-2 transition-colors duration-(--dur-fast) ease-out",
+              checked ? "border-ink bg-ink text-fg-inverse" : "border-control text-line-strong group-hover:text-fg-3",
+            )}
+          >
+            {/* Keyed, so checking mounts a new check that draws itself in. */}
+            <Icon key={String(checked)} icon={Checkmark} size={16} strokeWidth={checked ? 3 : 2} />
+          </span>
         </span>
         <span className="flex min-w-0 flex-1 flex-col">
-          <span className={cn("truncate text-base font-medium", checked ? "text-fg-2" : "text-fg")}>{title(h.behavior)}</span>
-          <span className="truncate text-sm text-fg-3">{children}</span>
+          <span className={cn("truncate font-medium", checked ? "text-fg-2" : "text-fg")}>{title(h.behavior)}</span>
+          <span className="truncate text-xs text-fg-3">{children}</span>
         </span>
+        {at && <span className="shrink-0 whitespace-nowrap text-fg-3 tabular-nums">{at}</span>}
       </Checkbox.Root>
     </li>
   );
@@ -259,9 +253,9 @@ function dayTitle(day: Date, today: Date) {
 }
 
 /**
- * The week that holds the day, Monday first: the month, a step to the week before or after, then the seven days. Each
- * day wears a ring of how much of its daily plan was done; the day shown is selected, and days after today are out of
- * reach.
+ * The week that holds the day, Monday first, as a card: the month as its title, a step to the week before or after, then
+ * the seven days. Each day wears a ring of how much of its daily plan was done; the day shown is selected, and days
+ * after today are out of reach.
  */
 function Week({ day, today, log }: { day: Date; today: Date; log: ReturnType<typeof useLog> }) {
   const navigate = useNavigate({ from: "/" });
@@ -273,33 +267,36 @@ function Week({ day, today, log }: { day: Date; today: Date; log: ReturnType<typ
   const month = new Intl.DateTimeFormat([], { month: "long", year: "numeric" });
 
   return (
-    <div role="group" aria-label="Week" className="flex flex-col gap-2">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-base font-semibold">{month.formatRange(monday, sunday)}</p>
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon-sm" aria-label="Previous week" onClick={() => go(addDays(day, -7))}>
-            <Icon icon={ChevronLeft} size={16} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label="Next week"
-            disabled={thisWeek}
-            onClick={() => {
-              const next = addDays(day, 7);
-              go(next > today ? today : next);
-            }}
-          >
-            <Icon icon={ChevronRight} size={16} />
-          </Button>
-        </div>
-      </div>
+    <Card labelledBy="week">
+      <CardTitle
+        id="week"
+        title={month.formatRange(monday, sunday)}
+        action={
+          <div className="-me-2 flex items-center gap-1">
+            <Button variant="ghost" size="icon-sm" aria-label="Previous week" onClick={() => go(addDays(day, -7))}>
+              <Icon icon={ChevronLeft} size={16} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Next week"
+              disabled={thisWeek}
+              onClick={() => {
+                const next = addDays(day, 7);
+                go(next > today ? today : next);
+              }}
+            >
+              <Icon icon={ChevronRight} size={16} />
+            </Button>
+          </div>
+        }
+      />
       {/* A radio group: one day is shown at a time, and the arrow keys move between the days. */}
       <RadioGroup
         aria-label="Day"
         value={toKey(day)}
         onValueChange={(key) => go(fromKey(key as string))}
-        className="grid grid-cols-7 gap-1"
+        className="-mx-2 -mbs-2 grid grid-cols-7 gap-1"
       >
         {days.map(({ day: d, tally }) => {
           const key = toKey(d);
@@ -331,11 +328,11 @@ function Week({ day, today, log }: { day: Date; today: Date; log: ReturnType<typ
           );
         })}
       </RadioGroup>
-    </div>
+    </Card>
   );
 }
 
-/** A day's share of its daily plan done, as a ring drawn clockwise from the top in the lime's line step. */
+/** A day's share of its daily plan done, as a ring drawn clockwise from the top in ink, what done wears everywhere. */
 function Ring({ share }: { share: number }) {
   const r = 16;
   const length = 2 * Math.PI * r;
@@ -351,7 +348,7 @@ function Ring({ share }: { share: number }) {
           strokeWidth="2.5"
           strokeLinecap="round"
           strokeDasharray={`${share * length} ${length}`}
-          className="stroke-accent-line"
+          className="stroke-ink"
         />
       )}
     </svg>

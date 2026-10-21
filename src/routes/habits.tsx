@@ -1,17 +1,19 @@
+import { Button as ButtonPrimitive } from "@base-ui/react/button";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
-import { Add, Icon } from "@/components/lime/icon";
+import { Add, ChevronRight, Icon } from "@/components/lime/icon";
 import { Button } from "@/components/lime/ui/button";
 import { Empty, EmptyActions, EmptyDescription, EmptyTitle } from "@/components/lime/ui/empty";
-import { List, ListItem } from "@/components/lime/ui/list";
+import { useToast } from "@/components/lime/ui/toast";
 import { cn } from "@/lib/lime/utils";
+import { Card, CardTitle } from "../components/Card";
 import { count, title, UNIT } from "../components/habit";
 import HabitForm from "../components/HabitForm";
 import PageHeader from "../components/PageHeader";
 import { logQuery, useLog, useToday } from "../data";
 import { donePeriods } from "../lib/consistency";
-import { FREQUENCY_LABEL, fromKey, periodStart, recentPeriods, toKey } from "../lib/dates";
+import { FREQUENCIES, FREQUENCY_LABEL, fromKey, periodStart, recentPeriods, toKey } from "../lib/dates";
 import { activeEvents, Habit, habitStart } from "../lib/model";
 
 export const Route = createFileRoute("/habits")({
@@ -36,6 +38,7 @@ function Habits() {
   const [form, setForm] = useState<{ habit: Habit | null; open: boolean; key: number }>({ habit: null, open: false, key: 0 });
   const [lit, setLit] = useState<string | null>(null);
   const [said, setSaid] = useState("");
+  const toast = useToast();
   const open = (habit: Habit | null) => setForm((f) => ({ habit, open: true, key: f.key + 1 }));
 
   useEffect(() => {
@@ -53,7 +56,7 @@ function Habits() {
 
   return (
     // On a phone Add habit is pinned at the foot, so the last row scrolls clear of it.
-    <div className={cn("flex flex-col gap-6", habits.length > 0 && "phone:pbe-20")}>
+    <div className={cn("flex flex-col gap-5", habits.length > 0 && "phone:pbe-20")}>
       <PageHeader title="Habits" aside={habits.length > 0 && <div className="phone:hidden">{add}</div>} />
       {/* What a save or an archive did, for a screen reader; the eye sees the row light up or leave. */}
       <p role="status" className="sr-only">
@@ -67,18 +70,22 @@ function Habits() {
           <EmptyActions>{add}</EmptyActions>
         </Empty>
       ) : (
-        <section aria-labelledby="habits-list" className="flex flex-col gap-3">
-          <h2 id="habits-list" className="sr-only">
-            Your habits
-          </h2>
-          <div className="overflow-clip rounded-panel border border-line bg-card shadow-card">
-            <List>
-              {habits.map((h) => (
-                <Row key={h.id} habit={h} log={log} today={today} lit={lit === h.id} onOpen={() => open(h)} />
-              ))}
-            </List>
-          </div>
-        </section>
+        // One card for each frequency in use, as Spendly groups its accounts by kind.
+        FREQUENCIES.map((f) => {
+          const group = habits.filter((h) => h.frequency === f);
+          return (
+            group.length > 0 && (
+              <Card key={f} labelledBy={`habits-${f}`}>
+                <CardTitle id={`habits-${f}`} title={FREQUENCY_LABEL[f]} count={group.length} />
+                <ul className="-mx-3 -mbs-2 flex flex-col divide-y divide-line">
+                  {group.map((h) => (
+                    <Row key={h.id} habit={h} log={log} today={today} lit={lit === h.id} onOpen={() => open(h)} />
+                  ))}
+                </ul>
+              </Card>
+            )
+          );
+        })
       )}
 
       {habits.length > 0 && (
@@ -101,13 +108,18 @@ function Habits() {
           setLit(null);
           requestAnimationFrame(() => setLit(id));
           setSaid(message);
+          // An archived habit leaves the screen, so its result is said where it can still be seen.
+          if (!id) toast.show({ title: message });
         }}
       />
     </div>
   );
 }
 
-/** One habit: its name, how often and since when, and its last seven periods; the row opens the form on it. */
+/**
+ * One habit: its name and since when, its last seven periods as dots, and how many of them were done as the row's
+ * figure. The whole row opens the form on it; a phone also shows the chevron, as a row that opens a page does.
+ */
 function Row({
   habit: h,
   log,
@@ -128,27 +140,40 @@ function Row({
   const shown = periods.filter((p) => p >= first);
   const hits = shown.filter((p) => done.has(toKey(p))).length;
   return (
-    <ListItem
-      className={cn(lit && "animate-highlight")}
-      onClick={onOpen}
-      chevron
-      title={title(h.behavior)}
-      description={`${FREQUENCY_LABEL[h.frequency]} · since ${since(habitStart(h, events))}`}
-      trailing={
-        // The last seven periods, oldest first: a filled square for each one done.
-        <span
-          className="flex items-center gap-1"
-          role="img"
-          aria-label={`Done in ${hits} of the last ${count(shown.length, UNIT[h.frequency])}`}
-        >
+    <li>
+      <ButtonPrimitive
+        onClick={onOpen}
+        className={cn(
+          "flex min-h-14 w-full items-center gap-x-3 rounded-md px-3 py-2 text-start transition-colors duration-(--dur-instant) ease-out hover:bg-surface-2 focus-visible:-outline-offset-2",
+          lit && "animate-highlight",
+        )}
+      >
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-medium text-fg">{title(h.behavior)}</span>
+          {/* The lines are blocks, so a screen reader would run them together without the comma. */}
+          <span className="sr-only">, </span>
+          <span className="block truncate text-xs text-fg-3">Since {since(habitStart(h, events))}</span>
+        </span>
+        {/* The last seven periods, oldest first: an ink dot for each one done, as done is drawn everywhere. A phone keeps
+            the room for the name; the figure beside it says the same. */}
+        <span aria-hidden="true" className="flex shrink-0 items-center gap-1 phone:hidden">
           {periods.map((p) => (
             <span
               key={toKey(p)}
-              className={cn("size-3 rounded-sm", p < first ? "bg-transparent" : done.has(toKey(p)) ? "bg-accent-line" : "bg-surface-3")}
+              className={cn("size-2 rounded-full", p < first ? "bg-transparent" : done.has(toKey(p)) ? "bg-ink" : "bg-line-strong")}
             />
           ))}
         </span>
-      }
-    />
+        <span className="w-14 shrink-0 text-end font-medium whitespace-nowrap text-fg tabular-nums">
+          <span aria-hidden="true">
+            {hits} of {shown.length}
+          </span>
+          <span className="sr-only">
+            , done in {hits} of the last {count(shown.length, UNIT[h.frequency])}
+          </span>
+        </span>
+        <Icon icon={ChevronRight} size={16} className="hidden shrink-0 text-fg-3 phone:block" />
+      </ButtonPrimitive>
+    </li>
   );
 }

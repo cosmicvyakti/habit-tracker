@@ -25,8 +25,9 @@ import { usePhone } from "../phone";
  * schedule; HabitKit: a name and a target), and a long setup is the one people don't finish. A plan made before this
  * form keeps its cue and place; editing here leaves them as they were.
  *
- * A dialog on the desktop and a sheet from the foot on a phone, as Spendly's entry form is. Mounted by its page and
- * opened with `open`, so it plays its exit and hands focus back.
+ * A dialog on the desktop and a sheet from the foot on a phone, as Spendly's entry form is, with its foot: the commit
+ * across the full width, and on a habit that exists the one other act under it. The close in the corner is the way out.
+ * Mounted by its page and opened with `open`, so it plays its exit and hands focus back.
  */
 export default function HabitForm({
   habit,
@@ -111,12 +112,12 @@ export default function HabitForm({
     </form>
   );
   const archive = habit && (
-    <Button variant="outline" onClick={() => setArchiving(true)} className="me-auto">
+    <Button variant="outline" onClick={() => setArchiving(true)} className="w-full">
       Archive habit
     </Button>
   );
   const commit = (
-    <Button type="submit" form={`${id}-form`}>
+    <Button type="submit" form={`${id}-form`} className="w-full">
       {habit ? "Save changes" : "Add habit"}
     </Button>
   );
@@ -130,7 +131,7 @@ export default function HabitForm({
               <SheetTitle>{title}</SheetTitle>
             </SheetHeader>
             <SheetBody className="pbs-1">{fields}</SheetBody>
-            <SheetFooter>
+            <SheetFooter className="flex-col border-bs border-line">
               {commit}
               {archive}
             </SheetFooter>
@@ -143,12 +144,10 @@ export default function HabitForm({
               <DialogTitle>{title}</DialogTitle>
             </DialogHeader>
             {fields}
-            <DialogFooter className="mbs-2 flex-row items-center justify-end">
-              {archive}
-              <Button variant="ghost" onClick={() => onOpenChange(false)}>
-                Cancel
-              </Button>
+            {/* On the dialog's foot over a hairline, edge to edge, as Spendly's entry form is. */}
+            <DialogFooter className="-mx-6 -mbe-6 flex-col border-bs border-line px-6 pbs-4 pbe-6 sm:flex-col">
               {commit}
+              {archive}
             </DialogFooter>
           </DialogContent>
         </Dialog>

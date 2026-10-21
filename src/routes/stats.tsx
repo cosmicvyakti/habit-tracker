@@ -2,11 +2,11 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { CSSProperties, useLayoutEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { ChevronLeft, ChevronRight, Icon } from "@/components/lime/icon";
-import { Badge } from "@/components/lime/ui/badge";
 import { Button } from "@/components/lime/ui/button";
 import { Empty, EmptyActions, EmptyDescription, EmptyTitle } from "@/components/lime/ui/empty";
 import { Segmented, SegmentedItem } from "@/components/lime/ui/segmented";
 import { cn } from "@/lib/lime/utils";
+import { Card, CardFoot, CardTitle } from "../components/Card";
 import { count, MISS_BADGE, pct, title, UNIT } from "../components/habit";
 import PageHeader from "../components/PageHeader";
 import { logQuery, useLog, useToday } from "../data";
@@ -64,43 +64,8 @@ function Stats() {
     });
 
   return (
-    <div className="flex flex-col gap-8">
-      <PageHeader
-        title="Stats"
-        aside={
-          <Segmented
-            aria-label="Range"
-            value={range}
-            onValueChange={(v) => navigate({ search: (s) => ({ ...s, range: v as Span }), replace: true })}
-            className="phone:w-full phone:*:flex-1"
-          >
-            {SPANS.map((s) => (
-              <SegmentedItem key={s} value={s}>
-                {SPAN_LABEL[s]}
-              </SegmentedItem>
-            ))}
-          </Segmented>
-        }
-        below={
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon-sm" aria-label={`Previous ${range}`} onClick={() => go(shiftSpan(from, range, -1))}>
-              <Icon icon={ChevronLeft} size={16} />
-            </Button>
-            <p aria-live="polite" className="min-w-0 truncate text-base font-semibold tabular-nums">
-              {rangeLabel(from, range)}
-            </p>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label={`Next ${range}`}
-              disabled={current}
-              onClick={() => go(shiftSpan(from, range, 1))}
-            >
-              <Icon icon={ChevronRight} size={16} />
-            </Button>
-          </div>
-        }
-      />
+    <div className="flex flex-col gap-5">
+      <PageHeader title="Stats" />
 
       {log.habits.length === 0 ? (
         <Empty>
@@ -114,41 +79,56 @@ function Stats() {
         </Empty>
       ) : (
         <>
-          <Lead stats={stats} span={range} />
-          <Chart stats={stats} span={range} today={today} />
-          {range !== "week" && <Calendar stats={stats} span={range} />}
-          <Habits stats={stats} span={range} current={current} />
+          {/* The range heads every card below it, as Spendly's Cash flow heads its cards: the range with a step either
+              side, and the pill that picks how long it is, hugging its words rather than stretched like a form field. */}
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+            <div className="-ms-2 flex min-w-0 items-center gap-1">
+              <Button variant="ghost" size="icon-sm" aria-label={`Previous ${range}`} onClick={() => go(shiftSpan(from, range, -1))}>
+                <Icon icon={ChevronLeft} size={16} />
+              </Button>
+              <p aria-live="polite" className="min-w-0 truncate text-lg leading-tight font-semibold tabular-nums">
+                {rangeLabel(from, range)}
+              </p>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={`Next ${range}`}
+                disabled={current}
+                onClick={() => go(shiftSpan(from, range, 1))}
+              >
+                <Icon icon={ChevronRight} size={16} />
+              </Button>
+            </div>
+            <Segmented
+              aria-label="Range"
+              value={range}
+              onValueChange={(v) => navigate({ search: (s) => ({ ...s, range: v as Span }), replace: true })}
+            >
+              {SPANS.map((s) => (
+                <SegmentedItem key={s} value={s}>
+                  {SPAN_LABEL[s]}
+                </SegmentedItem>
+              ))}
+            </Segmented>
+          </div>
+          {/* Spendly's Overview grid: past 56rem of room the lead card and what follows it take three fifths, and the
+              two small breakdowns stand in the two fifths beside them. Narrower, every card takes the full width. */}
           <div className="@container">
-            <div className="grid gap-8 @2xl:grid-cols-2">
-              <Weekdays weekdays={stats.weekdays} />
-              <Times times={stats.times} />
+            <div className="grid gap-5 @4xl:grid-cols-5 @4xl:items-start">
+              <div className="flex min-w-0 flex-col gap-5 @4xl:col-span-3">
+                <Completion stats={stats} span={range} today={today} />
+                {range !== "week" && <Calendar stats={stats} span={range} />}
+                <Habits stats={stats} span={range} current={current} />
+              </div>
+              <div className="grid gap-5 @2xl:grid-cols-2 @4xl:col-span-2 @4xl:grid-cols-1">
+                <Weekdays weekdays={stats.weekdays} />
+                <Times times={stats.times} />
+              </div>
             </div>
           </div>
         </>
       )}
     </div>
-  );
-}
-
-/** The figure the page leads with: the share of planned check-ins done, its change, and two facts beside it. */
-function Lead({ stats, span }: { stats: SpanStats; span: Span }) {
-  const r = rate(stats.total);
-  const change = delta(stats.total, stats.previous, span);
-  return (
-    <section aria-labelledby="lead" className="flex flex-col gap-1">
-      <h2 id="lead" className="text-lg font-semibold">
-        Completion
-      </h2>
-      <p className="text-3xl font-semibold tracking-tight tabular-nums">{pct(r)}</p>
-      <p className="text-base text-fg-2">
-        {r === null ? `Nothing was planned this ${span}.` : `${stats.total.done} of ${stats.total.planned} planned check-ins done.`}
-        {change && ` ${change}.`}
-      </p>
-      <p className="text-base text-fg-2 tabular-nums">
-        {count(stats.checkIns, "check-in")} · {count(stats.perfectDays, "perfect day")}
-        <span className="sr-only">, days when every daily habit was done</span>
-      </p>
-    </section>
   );
 }
 
@@ -165,64 +145,78 @@ const tick: Record<Span, (d: Date, i: number) => string | null> = {
   quarter: (d, i) => (i === 0 || d.getDate() <= 7 ? d.toLocaleDateString([], { month: "short" }) : null),
   year: (d) => d.toLocaleDateString([], { month: "narrow" }),
 };
-const BAR_UNIT: Record<Span, string> = { week: "day", month: "day", quarter: "week", year: "month" };
 
 /**
- * The rate over the range as bars, one per day, week or month. Hovering a bar reads it out on the line above the bars,
- * in place; a screen reader gets the same figures as a list.
+ * The card the page leads with, as Spendly's spending card: the share of planned check-ins done as the figure, a line
+ * under it, then the rate over the range as bars, one per day, week or month, and two facts at the foot. Pointing at a
+ * bar steps the others back and reads it out in the line, in place; a screen reader gets the same figures as a list.
  */
-function Chart({ stats, span, today }: { stats: SpanStats; span: Span; today: Date }) {
+function Completion({ stats, span, today }: { stats: SpanStats; span: Span; today: Date }) {
   const [hover, setHover] = useState<number | null>(null);
-  // Until a bar is pointed at, the line reads the latest one with something planned.
-  const latest = stats.bars.filter((b) => b.start <= today && b.tally.planned).pop();
-  const shown = hover === null ? latest : stats.bars[hover];
+  const r = rate(stats.total);
+  const change = delta(stats.total, stats.previous, span);
+  const summary =
+    r === null
+      ? `Nothing was planned this ${span}.`
+      : `${stats.total.done} of ${stats.total.planned} planned check-ins done.${change ? ` ${change}.` : ""}`;
   const read = (b: SpanStats["bars"][number]) =>
     b.start > today ? "Not yet" : b.tally.planned ? `${pct(rate(b.tally))}, ${b.tally.done} of ${b.tally.planned} done` : "Nothing planned";
+  const shown = hover === null ? null : stats.bars[hover];
   return (
-    <section aria-labelledby="chart" className="flex flex-col gap-3">
-      <h2 id="chart" className="text-lg font-semibold">
-        By {BAR_UNIT[span]}
-      </h2>
-      <div className="flex flex-col gap-3 rounded-panel border border-line bg-card p-5 shadow-card">
-        <p aria-hidden="true" className="min-h-5 text-sm text-fg-2 tabular-nums">
-          {shown ? `${barName[span](shown.start)}: ${read(shown)}` : `Nothing planned this ${span}.`}
-        </p>
-        <div aria-hidden="true" className="flex h-40 items-end gap-0.5 border-be border-line" onPointerLeave={() => setHover(null)}>
-          {stats.bars.map((b, i) => {
-            const r = rate(b.tally);
-            return (
-              <div
-                key={toKey(b.start)}
-                onPointerEnter={() => setHover(i)}
-                className={cn("flex h-full min-w-0 flex-1 items-end justify-center rounded-t-sm", hover === i && "bg-surface-2")}
-              >
-                {r !== null && b.start <= today && (
-                  // Thin marks: a bar never grows past 40px, however few share the row.
-                  <div
-                    className="h-(--pct) min-h-0.5 w-full max-w-10 rounded-t-sm bg-series-1"
-                    style={{ "--pct": `${r * 100}%` } as CSSProperties}
-                  />
-                )}
-              </div>
-            );
-          })}
+    <Card labelledBy="completion">
+      <CardTitle id="completion" title="Completion" />
+      <p className="text-xl font-semibold tracking-tight tabular-nums">{pct(r)}</p>
+      <p aria-hidden="true" className="min-h-6 text-fg-3 tabular-nums">
+        {shown ? `${barName[span](shown.start)}: ${read(shown)}` : summary}
+      </p>
+      <p className="sr-only">{summary}</p>
+      {/* With nothing planned in the range there is nothing to draw: the line above says so. Keyed by the range, so a
+          new one draws in again. */}
+      {r !== null && (
+        <div key={`${span}-${toKey(stats.from)}`} aria-hidden="true" className="draw-in mbs-5 flex flex-col gap-2">
+          <div className="linked flex h-40 items-end gap-0.5 border-be border-line" onPointerLeave={() => setHover(null)}>
+            {stats.bars.map((b, i) => {
+              const br = rate(b.tally);
+              return (
+                <div
+                  key={toKey(b.start)}
+                  onPointerEnter={() => setHover(i)}
+                  className="flex h-full min-w-0 flex-1 items-end justify-center"
+                >
+                  {br !== null && b.start <= today && (
+                    // Thin marks: a bar never grows past 40px, however few share the row.
+                    <div
+                      className="h-(--pct) min-h-0.5 w-full max-w-10 rounded-ss-sm rounded-se-sm bg-series-1"
+                      style={{ "--pct": `${br * 100}%` } as CSSProperties}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex gap-0.5">
+            {stats.bars.map((b, i) => (
+              <span key={toKey(b.start)} className="min-w-0 flex-1 overflow-visible text-center text-xs whitespace-nowrap text-fg-3">
+                {tick[span](b.start, i)}
+              </span>
+            ))}
+          </div>
         </div>
-        <div aria-hidden="true" className="flex gap-0.5">
-          {stats.bars.map((b, i) => (
-            <span key={toKey(b.start)} className="min-w-0 flex-1 overflow-visible text-center text-xs whitespace-nowrap text-fg-3">
-              {tick[span](b.start, i)}
-            </span>
-          ))}
-        </div>
-        <ul className="sr-only">
-          {stats.bars.map((b) => (
-            <li key={toKey(b.start)}>
-              {barName[span](b.start)}: {read(b)}
-            </li>
-          ))}
-        </ul>
-      </div>
-    </section>
+      )}
+      <ul className="sr-only">
+        {stats.bars.map((b) => (
+          <li key={toKey(b.start)}>
+            {barName[span](b.start)}: {read(b)}
+          </li>
+        ))}
+      </ul>
+      <CardFoot>
+        <span className="tabular-nums">
+          {count(stats.checkIns, "check-in")} · {count(stats.perfectDays, "perfect day")}
+        </span>
+        <span className="sr-only">, days when every daily habit was done</span>
+      </CardFoot>
+    </Card>
   );
 }
 
@@ -242,12 +236,10 @@ function Calendar({ stats, span }: { stats: SpanStats; span: Span }) {
     if (scroller.current) scroller.current.scrollLeft = scroller.current.scrollWidth;
   }, [span, stats.from]);
   return (
-    <section aria-labelledby="calendar" className="flex flex-col gap-3">
-      <h2 id="calendar" className="text-lg font-semibold">
-        Daily habits
-      </h2>
-      <div className="flex flex-col gap-3 rounded-panel border border-line bg-card p-5 shadow-card">
-        <p className="min-h-5 text-sm text-fg-2 tabular-nums" aria-hidden="true">
+    <Card labelledBy="calendar">
+      <CardTitle id="calendar" title="Daily habits" />
+      <div className="-mbs-2 flex flex-col gap-3">
+        <p className="min-h-6 text-fg-3 tabular-nums" aria-hidden="true">
           {shown
             ? `${shown.day.toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })}: ${shown.tally.planned ? `${shown.tally.done} of ${shown.tally.planned} done` : "nothing daily planned"}`
             : `${count(stats.perfectDays, "perfect day")} this ${span}.`}
@@ -259,7 +251,13 @@ function Calendar({ stats, span }: { stats: SpanStats; span: Span }) {
             ))}
           </div>
         )}
-        <div ref={scroller} className={cn(!month && "overflow-x-auto")} onPointerLeave={() => setHover(null)}>
+        {/* A quarter or a year can run wider than its card, so it scrolls, and a keyboard can reach it to scroll it. */}
+        <div
+          ref={scroller}
+          tabIndex={month ? undefined : 0}
+          className={cn(!month && "overflow-x-auto")}
+          onPointerLeave={() => setHover(null)}
+        >
           <div
             role="img"
             aria-label={`${count(stats.perfectDays, "day")} with every daily habit done this ${span}.`}
@@ -282,7 +280,8 @@ function Calendar({ stats, span }: { stats: SpanStats; span: Span }) {
                   hover === i && "ring-2 ring-fg-3",
                 )}
               >
-                {month && <span className={cn(d.level === 3 && "text-on-accent")}>{d.day.getDate()}</span>}
+                {/* The two darker steps take the light figure, so it stays readable on the ink. */}
+                {month && <span className={cn((d.level === 2 || d.level === 3) && "text-fg-inverse")}>{d.day.getDate()}</span>}
               </span>
             ))}
           </div>
@@ -295,72 +294,89 @@ function Calendar({ stats, span }: { stats: SpanStats; span: Span }) {
           More
         </div>
       </div>
-    </section>
+    </Card>
   );
 }
 
-/** Each habit planned in the range: its rate as a meter, how many periods, where it stands now, and its best run. */
+// A habit's standing, as Spendly's budgets wear theirs: in the figure and the meter's fill, and nothing said when it is
+// fine. Each tone also has its words under the figure, so it is never colour alone.
+const TONE = {
+  fine: { text: "text-fg", fill: "bg-fg-3", word: "text-fg-3" },
+  "missed-once": { text: "text-warn-text", fill: "bg-warn", word: "text-warn-text" },
+  "missed-twice": { text: "text-danger-text", fill: "bg-danger/45", word: "text-danger-text" },
+};
+
+/**
+ * Each habit planned in the range, as Spendly's budget rows: its name, how many periods and its best run, its rate as a
+ * meter, then the rate as a figure over where it stands now. Pointing at a row steps the others back.
+ */
 function Habits({ stats, span, current }: { stats: SpanStats; span: Span; current: boolean }) {
   return (
-    <section aria-labelledby="by-habit" className="flex flex-col gap-3">
-      <h2 id="by-habit" className="text-lg font-semibold">
-        By habit
-      </h2>
+    <Card labelledBy="by-habit">
+      <CardTitle id="by-habit" title="By habit" />
       {stats.habits.length === 0 ? (
-        <p className="text-base text-fg-2">No habit was planned this {span}.</p>
+        <p className="text-fg-2">No habit was planned this {span}.</p>
       ) : (
-        <ul className="card-rows overflow-clip rounded-panel border border-line bg-card shadow-card">
+        <ul className="card-rows linked -mbs-2">
           {stats.habits.map(({ habit: h, tally, state, longest }) => {
             const r = rate(tally);
-            const badge = h.archivedAt ? { variant: "neutral" as const, label: "Archived" } : current ? MISS_BADGE[state] : null;
+            const standing = !h.archivedAt && current && (state === "missed-once" || state === "missed-twice") ? state : "fine";
+            const tone = TONE[standing];
+            const word = h.archivedAt
+              ? "Archived"
+              : r === null
+                ? "Not due"
+                : current && state !== "on-track"
+                  ? MISS_BADGE[state].label
+                  : null;
             return (
-              <li key={h.id} className="flex flex-col gap-2 px-5 py-4">
-                <div className="flex items-center gap-3">
-                  <span className="min-w-0 flex-1 truncate text-base font-medium">{title(h.behavior)}</span>
-                  {badge && <Badge variant={badge.variant}>{badge.label}</Badge>}
-                  <span className="shrink-0 text-end text-base font-semibold whitespace-nowrap tabular-nums">
-                    {r === null ? "Not due" : pct(r)}
-                  </span>
+              <li key={h.id} className="flex min-h-11 items-center gap-x-3 py-2">
+                {/* The name wraps rather than lose the part it was chosen for; the meters and figures keep one width on
+                    every row, so they line up down the list. */}
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium wrap-break-word text-fg">{title(h.behavior)}</p>
+                  <p className="text-xs text-fg-3 tabular-nums">
+                    {FREQUENCY_LABEL[h.frequency]}
+                    {tally.planned > 0 && ` · ${tally.done} of ${count(tally.planned, UNIT[h.frequency])}`}
+                    {longest > 0 && ` · longest run ${count(longest, UNIT[h.frequency])}`}
+                  </p>
                 </div>
-                <div aria-hidden="true" className="h-1.5 overflow-hidden rounded-full bg-surface-2">
-                  <div className="h-full w-(--pct) rounded-full bg-series-1" style={{ "--pct": `${(r ?? 0) * 100}%` } as CSSProperties} />
+                <div aria-hidden="true" className="h-2.5 w-32 shrink-0 overflow-clip rounded-full bg-line phone:w-16">
+                  <div
+                    className={cn("h-full w-(--pct) rounded-full", tone.fill)}
+                    style={{ "--pct": `${(r ?? 0) * 100}%` } as CSSProperties}
+                  />
                 </div>
-                <p className="text-sm text-fg-3 tabular-nums">
-                  {FREQUENCY_LABEL[h.frequency]} ·{" "}
-                  {tally.planned ? `${tally.done} of ${count(tally.planned, UNIT[h.frequency])} done` : `nothing due yet this ${span}`}
-                  {longest > 0 && ` · longest run ${count(longest, UNIT[h.frequency])}`}
-                </p>
+                <div className="flex w-24 shrink-0 flex-col items-end">
+                  {r !== null && <p className={cn("text-xl font-semibold tracking-tight tabular-nums", tone.text)}>{pct(r)}</p>}
+                  {word && <p className={cn("text-xs whitespace-nowrap", tone.word)}>{word}</p>}
+                </div>
               </li>
             );
           })}
         </ul>
       )}
-    </section>
+    </Card>
   );
 }
 
-/** Rows of meters, for the two small breakdowns. */
+/** Rows of meters, for the two small breakdowns. Pointing at a row steps the others back. */
 function Meters({ id, heading, rows }: { id: string; heading: string; rows: { label: string; value: number; text: string }[] }) {
   return (
-    <section aria-labelledby={id} className="flex flex-col gap-3">
-      <h2 id={id} className="text-lg font-semibold">
-        {heading}
-      </h2>
-      <ul className="flex flex-col gap-3 rounded-panel border border-line bg-card p-5 shadow-card">
+    <Card labelledBy={id}>
+      <CardTitle id={id} title={heading} />
+      <ul className="linked -mbs-1 flex flex-col">
         {rows.map((row) => (
-          <li key={row.label} className="flex items-center gap-3">
-            <span className="w-24 shrink-0 text-sm text-fg-2">{row.label}</span>
-            <span aria-hidden="true" className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-2">
-              <span
-                className="block h-full w-(--pct) rounded-full bg-series-1"
-                style={{ "--pct": `${row.value * 100}%` } as CSSProperties}
-              />
+          <li key={row.label} className="flex min-h-9 items-center gap-3">
+            <span className="w-24 shrink-0 text-fg-2">{row.label}</span>
+            <span aria-hidden="true" className="h-2.5 flex-1 overflow-clip rounded-full bg-line">
+              <span className="block h-full w-(--pct) rounded-full bg-fg-3" style={{ "--pct": `${row.value * 100}%` } as CSSProperties} />
             </span>
-            <span className="w-24 shrink-0 text-end text-sm text-fg tabular-nums">{row.text}</span>
+            <span className="w-24 shrink-0 text-end text-fg tabular-nums">{row.text}</span>
           </li>
         ))}
       </ul>
-    </section>
+    </Card>
   );
 }
 

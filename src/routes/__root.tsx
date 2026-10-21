@@ -59,21 +59,21 @@ const THEME_SCRIPT = `try { (${applyTheme.toString()})(localStorage.getItem("${T
 
 function Root() {
   const { queryClient } = Route.useRouteContext();
-  const atSignIn = useRouterState({ select: (s) => s.location.pathname === "/sign-in" });
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const atSignIn = pathname === "/sign-in";
   return (
     <QueryClientProvider client={queryClient}>
       <LimePortalProvider>
         <ToastProvider>
           <UpdateNotice />
           {atSignIn ? (
-            <div className="min-h-dvh bg-ground text-fg">
-              <header className="border-be border-line">
-                <div className="mx-auto flex min-h-14 w-full max-w-5xl items-center justify-between px-4">
-                  <span className="label">Habit tracker</span>
-                  <ThemeToggle />
-                </div>
-                <SyncStatus className="mx-auto w-full max-w-5xl px-4 not-empty:pbe-2" />
-              </header>
+            // Spendly's sign-in: the page centred, no chrome. Before there is an account the theme has no settings to
+            // live in, so its toggle stands alone in the corner.
+            <div className="relative flex min-h-dvh flex-col items-center justify-center bg-ground px-4 pbs-safe pbe-safe text-fg">
+              <div className="absolute inset-e-4 inset-bs-4">
+                <ThemeToggle />
+              </div>
+              <SyncStatus className="w-full max-w-sm not-empty:pbe-4" />
               <Suspense fallback={null}>
                 <Outlet />
               </Suspense>
@@ -81,12 +81,13 @@ function Root() {
           ) : (
             // Spendly's layout: the ink sidebar held to the left edge, then the page, which scrolls itself so its
             // rounded corners stay where they are. Below the floor the phone's chrome takes over: a top bar inside the
-            // page, and the document scrolls.
+            // page, and the document scrolls. The page is positioned, so it paints over the sidebar's ink that runs
+            // under its rounded corners.
             <div className="flex h-dvh text-fg phone:block phone:h-auto phone:min-h-dvh">
               {/* The first stop for a keyboard, ahead of the sidebar; it slides into view only while focused. */}
               <a
                 href="#content"
-                className={cn(buttonVariants(), "fixed! start-2 top-2 z-50 -translate-y-[200%] focus-visible:translate-y-0")}
+                className={cn(buttonVariants({ variant: "outline" }), "fixed! start-2 top-2 z-50 -translate-y-[200%] focus-visible:translate-y-0")}
               >
                 Skip to content
               </a>
@@ -95,10 +96,11 @@ function Root() {
                 // The skip link's target. tabIndex -1 so it can take the focus, and the keys then scroll the page.
                 id="content"
                 tabIndex={-1}
-                className="min-w-0 flex-1 overflow-y-auto rounded-s-panel border-s border-line bg-ground px-8 pbe-10 phone:overflow-visible phone:rounded-none phone:border-0 phone:px-4 phone:pbe-safe-5"
+                className="relative min-w-0 flex-1 overflow-y-auto rounded-s-panel border-s border-line bg-ground px-8 pbe-10 phone:overflow-visible phone:rounded-none phone:border-0 phone:px-4 phone:pbe-safe-5"
               >
                 <TopBar />
-                <div className="mx-auto w-full max-w-5xl">
+                {/* The page stops growing and centres past 64rem, as Spendly's do; Stats, a dashboard, past 88rem. */}
+                <div className={cn("mx-auto w-full", pathname === "/stats" ? "max-w-wide" : "max-w-5xl")}>
                   <SyncStatus className="not-empty:pbs-4" />
                   <Suspense fallback={null}>
                     <Outlet />
