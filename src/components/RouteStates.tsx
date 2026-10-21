@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/lime/ui/button";
 import { Empty, EmptyActions, EmptyDescription, EmptyTitle } from "@/components/lime/ui/empty";
 import { ErrorState } from "@/components/lime/ui/error-state";
+import PageHeader from "./PageHeader";
 
 // What the router shows in place of a page. They render inside the header and the page frame, and use
 // nothing but Lime and the router, so they still work when the error came before the app's providers.
@@ -30,10 +31,10 @@ export function LoadError() {
 
   const offline = !navigator.onLine;
   return (
-    <main className="mx-auto w-full max-w-2xl px-4 pt-4 pb-8 sm:px-6 sm:pt-8">
-      <h1 className="title-page">Couldn't load your habits</h1>
+    <>
+      <PageHeader title="Couldn't load your habits" />
       <ErrorState
-        className="mt-8"
+        className="mbs-6"
         title={offline ? "You're offline" : "The server didn't answer"}
         description={
           offline
@@ -43,17 +44,17 @@ export function LoadError() {
         onRetry={retry}
         retrying={retrying}
       />
-    </main>
+    </>
   );
 }
 
 export function NotFound() {
   return (
-    <main className="mx-auto w-full max-w-2xl px-4 pt-4 pb-8 sm:px-6 sm:pt-8">
+    <>
       {/* No route matched, so no route's head sets the title; React lifts this one into <head>. */}
       <title>Page not found · Habit tracker</title>
-      <h1 className="title-page">Page not found</h1>
-      <Empty className="mt-8">
+      <PageHeader title="Page not found" />
+      <Empty className="mbs-6">
         <EmptyTitle aria-level={2}>Nothing is at this address</EmptyTitle>
         <EmptyDescription>The link may be old or mistyped.</EmptyDescription>
         <EmptyActions>
@@ -63,6 +64,6 @@ export function NotFound() {
           </Button>
         </EmptyActions>
       </Empty>
-    </main>
+    </>
   );
 }

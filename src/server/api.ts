@@ -21,7 +21,7 @@ export const pushOps = createServerFn({ method: "POST" })
   .validator(z.object({ ops: z.array(z.unknown()).min(1).max(100) }))
   .handler(({ data }) => applyOps(data.ops));
 
-export const getSession = createServerFn({ method: "GET" }).handler(() => ({ signedIn: auth.isSignedIn() }));
+export const getSession = createServerFn({ method: "GET" }).handler(() => ({ signedIn: auth.isSignedIn(), email: auth.accountEmail() }));
 
 export const signIn = createServerFn({ method: "POST" })
   .validator(signInSchema)

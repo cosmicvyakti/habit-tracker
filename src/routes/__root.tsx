@@ -3,8 +3,7 @@ import { createRootRouteWithContext, HeadContent, Outlet, redirect, Scripts, use
 import { ReactNode, Suspense } from "react";
 import { buttonVariants } from "@/components/lime/ui/button";
 import { ToastProvider } from "@/components/lime/ui/toast";
-import lime from "@/components/lime/styles.css?url";
-import fonts from "../fonts.css?url";
+import app from "../app.css?url";
 import motion from "../motion.css?url";
 import { LimePortalProvider } from "@/lib/lime/portal";
 import { cn } from "@/lib/lime/utils";
@@ -22,8 +21,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "Habit tracker" },
     ],
     links: [
-      { rel: "stylesheet", href: fonts },
-      { rel: "stylesheet", href: lime },
+      { rel: "preload", href: "/fonts/figtree.woff2", as: "font", type: "font/woff2", crossOrigin: "anonymous" },
+      { rel: "stylesheet", href: app },
       { rel: "stylesheet", href: motion },
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
@@ -40,7 +39,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 function Shell({ children }: { children: ReactNode }) {
   return (
     // Lime's reset reaches only elements inside the scope, so the scope sits on <html> to cover <body>'s margin too.
-    <html lang="en" className="lime">
+    // The theme script sets data-theme before React hydrates, so that one difference is expected.
+    <html lang="en" className="lime" suppressHydrationWarning>
       <head>
         {/* Runs before the first paint, so a dark page never flashes light. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
@@ -65,45 +65,48 @@ function Root() {
       <LimePortalProvider>
         <ToastProvider>
           <UpdateNotice />
-          <div className="min-h-dvh bg-page text-fg">
-            {atSignIn ? (
-              <>
-                <header className="border-be border-line">
-                  <div className="mx-auto flex min-h-14 w-full max-w-5xl items-center justify-between px-4 py-2 sm:px-6">
-                    <span className="label">Habit tracker</span>
-                    <ThemeToggle />
-                  </div>
-                  <SyncStatus />
-                </header>
-                <Suspense fallback={null}>
-                  <Outlet />
-                </Suspense>
-              </>
-            ) : (
-              <div className="flex">
-                {/* The first stop for a keyboard, ahead of the sidebar's six; it slides into view only while focused. */}
-                <a
-                  href="#content"
-                  className={cn(buttonVariants(), "fixed! start-2 top-2 z-50 -translate-y-[200%] focus-visible:translate-y-0")}
-                >
-                  Skip to content
-                </a>
-                <Sidebar />
-                {/* On a phone the top bar says the page's title, so the page's own h1 stays for screen readers only, and
-                    what came under it moves up to the bar. */}
-                <div className="min-w-0 flex-1 max-md:[&_main_h1]:sr-only max-md:[&_main_h1+*]:mbs-0">
-                  <TopBar />
-                  <SyncStatus />
-                  {/* The skip link's target: the next Tab after it lands on the page's first control. */}
-                  <div id="content">
-                    <Suspense fallback={null}>
-                      <Outlet />
-                    </Suspense>
-                  </div>
+          {atSignIn ? (
+            <div className="min-h-dvh bg-ground text-fg">
+              <header className="border-be border-line">
+                <div className="mx-auto flex min-h-14 w-full max-w-5xl items-center justify-between px-4">
+                  <span className="label">Habit tracker</span>
+                  <ThemeToggle />
                 </div>
-              </div>
-            )}
-          </div>
+                <SyncStatus className="mx-auto w-full max-w-5xl px-4 not-empty:pbe-2" />
+              </header>
+              <Suspense fallback={null}>
+                <Outlet />
+              </Suspense>
+            </div>
+          ) : (
+            // Spendly's layout: the ink sidebar held to the left edge, then the page, which scrolls itself so its
+            // rounded corners stay where they are. Below the floor the phone's chrome takes over: a top bar inside the
+            // page, and the document scrolls.
+            <div className="flex h-dvh text-fg phone:block phone:h-auto phone:min-h-dvh">
+              {/* The first stop for a keyboard, ahead of the sidebar; it slides into view only while focused. */}
+              <a
+                href="#content"
+                className={cn(buttonVariants(), "fixed! start-2 top-2 z-50 -translate-y-[200%] focus-visible:translate-y-0")}
+              >
+                Skip to content
+              </a>
+              <Sidebar />
+              <main
+                // The skip link's target. tabIndex -1 so it can take the focus, and the keys then scroll the page.
+                id="content"
+                tabIndex={-1}
+                className="min-w-0 flex-1 overflow-y-auto rounded-s-panel border-s border-line bg-ground px-8 pbe-10 phone:overflow-visible phone:rounded-none phone:border-0 phone:px-4 phone:pbe-safe-5"
+              >
+                <TopBar />
+                <div className="mx-auto w-full max-w-5xl">
+                  <SyncStatus className="not-empty:pbs-4" />
+                  <Suspense fallback={null}>
+                    <Outlet />
+                  </Suspense>
+                </div>
+              </main>
+            </div>
+          )}
         </ToastProvider>
       </LimePortalProvider>
     </QueryClientProvider>

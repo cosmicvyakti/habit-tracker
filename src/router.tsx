@@ -9,6 +9,8 @@ export function getRouter() {
     routeTree,
     context: { queryClient },
     scrollRestoration: true,
+    // On the desktop the page scrolls inside <main>, not the window, so a new page opens at its top there too.
+    scrollToTopSelectors: ["#content"],
     // Pages crossfade where the browser supports view transitions; motion.css sets the timing.
     defaultViewTransition: true,
     defaultErrorComponent: LoadError,

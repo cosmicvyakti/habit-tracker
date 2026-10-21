@@ -31,13 +31,24 @@ const lime = (await import(pathToFileURL(plugin).href)).default;
 // The paths every system's lint skips (build output, shadcn's own components/ui), from the shared file beside the plugin.
 const {LINT_IGNORES} = await import(pathToFileURL(join(dirname(plugin), 'value-rules.mjs')).href);
 
+// This app's allowances, after Spendly's. Kept here, never in lib/lime/lint/, so a re-fetch of the lint keeps them.
+// The grounds (bg-ground, bg-card) and the chart's series are the app's own tokens (src/app.css); phone: needs none.
+const APP_CLASS = /^"(?:[^"\s]*:)?(?:bg-(?:ground|card|series-1))"/;
+const unknownClass = lime.rules['unknown-class'];
+const appLime = {...lime, rules: {...lime.rules, 'unknown-class': {
+  ...unknownClass,
+  create: context => unknownClass.create(Object.create(context, {
+    report: {value: report => { if (!APP_CLASS.test(report.message ?? '')) context.report(report); }},
+  })),
+}}};
+
 export default [
   {ignores: [...LINT_IGNORES, '**/lib/lime/lint/**']},
   {
     files: ['**/*.{js,jsx,ts,tsx}'],
     languageOptions: {parser: tsParser, parserOptions: {ecmaFeatures: {jsx: true}}},
     linterOptions: {reportUnusedDisableDirectives: 'off'},
-    plugins: {lime},
+    plugins: {lime: appLime},
     processor: 'lime/standalone',
     rules: lime.configs.app.rules,
   },

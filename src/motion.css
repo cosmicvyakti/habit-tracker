@@ -4,3 +4,5 @@
 ::view-transition-group(root) { animation-duration: var(--dur-base); animation-timing-function: var(--ease-out); }
 ::view-transition-old(root) { animation-duration: var(--dur-fast); animation-timing-function: var(--ease-in); }
 ::view-transition-new(root) { animation-duration: var(--dur-base); animation-timing-function: var(--ease-out); }
+/* A checked habit gliding from To do down to Completed (the rows Today names with `habit-row`), on the dialog's duration. */
+::view-transition-group(*.habit-row) { animation-duration: var(--dur-slow); animation-timing-function: var(--ease-out); }

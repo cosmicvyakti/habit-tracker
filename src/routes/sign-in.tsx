@@ -34,7 +34,7 @@ function SignIn() {
     onSubmit: async ({ value }) => {
       const result = await signIn({ data: value }).catch(() => "offline" as const);
       if (result !== "ok") return setProblem(result);
-      markSignedIn();
+      markSignedIn(value.email.toLowerCase());
       // Changes queued while signed out go out now, and the log loads fresh.
       syncNow();
       await queryClient.invalidateQueries({ queryKey: logQuery.queryKey });

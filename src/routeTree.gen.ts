@@ -10,11 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as CheckInRouteImport } from './routes/check-in'
-import { Route as InsightsRouteImport } from './routes/insights'
-import { Route as LogRouteImport } from './routes/log'
-import { Route as PlanRouteImport } from './routes/plan'
+import { Route as HabitsRouteImport } from './routes/habits'
 import { Route as SignInRouteImport } from './routes/sign-in'
+import { Route as StatsRouteImport } from './routes/stats'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 
 const IndexRoute = IndexRouteImport.update({
@@ -22,29 +20,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CheckInRoute = CheckInRouteImport.update({
-  id: '/check-in',
-  path: '/check-in',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const InsightsRoute = InsightsRouteImport.update({
-  id: '/insights',
-  path: '/insights',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LogRoute = LogRouteImport.update({
-  id: '/log',
-  path: '/log',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PlanRoute = PlanRouteImport.update({
-  id: '/plan',
-  path: '/plan',
+const HabitsRoute = HabitsRouteImport.update({
+  id: '/habits',
+  path: '/habits',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SignInRoute = SignInRouteImport.update({
   id: '/sign-in',
   path: '/sign-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StatsRoute = StatsRouteImport.update({
+  id: '/stats',
+  path: '/stats',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
@@ -55,69 +43,39 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/check-in': typeof CheckInRoute
-  '/insights': typeof InsightsRoute
-  '/log': typeof LogRoute
-  '/plan': typeof PlanRoute
+  '/habits': typeof HabitsRoute
   '/sign-in': typeof SignInRoute
+  '/stats': typeof StatsRoute
   '/api/health': typeof ApiHealthRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/check-in': typeof CheckInRoute
-  '/insights': typeof InsightsRoute
-  '/log': typeof LogRoute
-  '/plan': typeof PlanRoute
+  '/habits': typeof HabitsRoute
   '/sign-in': typeof SignInRoute
+  '/stats': typeof StatsRoute
   '/api/health': typeof ApiHealthRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/check-in': typeof CheckInRoute
-  '/insights': typeof InsightsRoute
-  '/log': typeof LogRoute
-  '/plan': typeof PlanRoute
+  '/habits': typeof HabitsRoute
   '/sign-in': typeof SignInRoute
+  '/stats': typeof StatsRoute
   '/api/health': typeof ApiHealthRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/check-in'
-    | '/insights'
-    | '/log'
-    | '/plan'
-    | '/sign-in'
-    | '/api/health'
+  fullPaths: '/' | '/habits' | '/sign-in' | '/stats' | '/api/health'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/check-in'
-    | '/insights'
-    | '/log'
-    | '/plan'
-    | '/sign-in'
-    | '/api/health'
-  id:
-    | '__root__'
-    | '/'
-    | '/check-in'
-    | '/insights'
-    | '/log'
-    | '/plan'
-    | '/sign-in'
-    | '/api/health'
+  to: '/' | '/habits' | '/sign-in' | '/stats' | '/api/health'
+  id: '__root__' | '/' | '/habits' | '/sign-in' | '/stats' | '/api/health'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  CheckInRoute: typeof CheckInRoute
-  InsightsRoute: typeof InsightsRoute
-  LogRoute: typeof LogRoute
-  PlanRoute: typeof PlanRoute
+  HabitsRoute: typeof HabitsRoute
   SignInRoute: typeof SignInRoute
+  StatsRoute: typeof StatsRoute
   ApiHealthRoute: typeof ApiHealthRoute
 }
 
@@ -130,32 +88,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/check-in': {
-      id: '/check-in'
-      path: '/check-in'
-      fullPath: '/check-in'
-      preLoaderRoute: typeof CheckInRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/insights': {
-      id: '/insights'
-      path: '/insights'
-      fullPath: '/insights'
-      preLoaderRoute: typeof InsightsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/log': {
-      id: '/log'
-      path: '/log'
-      fullPath: '/log'
-      preLoaderRoute: typeof LogRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/plan': {
-      id: '/plan'
-      path: '/plan'
-      fullPath: '/plan'
-      preLoaderRoute: typeof PlanRouteImport
+    '/habits': {
+      id: '/habits'
+      path: '/habits'
+      fullPath: '/habits'
+      preLoaderRoute: typeof HabitsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sign-in': {
@@ -163,6 +100,13 @@ declare module '@tanstack/react-router' {
       path: '/sign-in'
       fullPath: '/sign-in'
       preLoaderRoute: typeof SignInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/stats': {
+      id: '/stats'
+      path: '/stats'
+      fullPath: '/stats'
+      preLoaderRoute: typeof StatsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/health': {
@@ -177,11 +121,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  CheckInRoute: CheckInRoute,
-  InsightsRoute: InsightsRoute,
-  LogRoute: LogRoute,
-  PlanRoute: PlanRoute,
+  HabitsRoute: HabitsRoute,
   SignInRoute: SignInRoute,
+  StatsRoute: StatsRoute,
   ApiHealthRoute: ApiHealthRoute,
 }
 export const routeTree = rootRouteImport

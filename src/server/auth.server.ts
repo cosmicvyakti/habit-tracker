@@ -24,6 +24,11 @@ export function isSignedIn(): boolean {
   return token !== undefined && hasSession(token);
 }
 
+/** The account's email, for the sidebar, to a signed-in caller only. Null when sign-in is off and none is set. */
+export function accountEmail(): string | null {
+  return isSignedIn() ? process.env.HABITS_EMAIL?.trim() || null : null;
+}
+
 /** For every server function that reads or writes the log. */
 export function requireSession(): void {
   if (!isSignedIn()) throw new Error(SIGNED_OUT);

@@ -15,7 +15,7 @@ export {
   Minus as Subtract, Clock as Time, Upload, Wallet, PiggyBank, TriangleAlert as Warning, TriangleAlert as WarningFilled,
   ChevronLeft, ArrowLeft, Pause, Ellipsis as OverflowMenuHorizontal, Folder, Star, Plus, Trash2 as Delete, Coffee as Cafe,
   ShoppingBag, Bell as Notification, Lock as Locked, Undo, Pencil as Edit, CircleDashed as CircleDash, MapPin as Location,
-  Moon, Sun, CalendarDays, ChartLine, History, LogOut
+  Moon, Sun, CalendarDays, ChartLine, LogOut, ListChecks
 } from 'lucide-react';
 
 export type LimeIcon = LucideIcon;

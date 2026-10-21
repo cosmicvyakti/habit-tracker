@@ -13,6 +13,7 @@ import { getLog, getSession, pushOps } from "./server/api";
 
 const LOG_KEY = "habit-tracker:log";
 const OUTBOX_KEY = "habit-tracker:outbox";
+const EMAIL_KEY = "habit-tracker:email";
 const RETRY_MS = 30_000;
 const BATCH = 100;
 
@@ -133,20 +134,37 @@ export const syncNow = () => void flush();
 
 // Known once the server has said so; until then, ask. Stays unknown offline.
 let session: boolean | undefined;
+// Who is signed in, for the sidebar. Kept on the device so it shows offline too.
+let email: string | null = (typeof localStorage !== "undefined" && read<string>(EMAIL_KEY)) || null;
+
+function setEmail(next: string | null) {
+  email = next;
+  try {
+    if (next) localStorage.setItem(EMAIL_KEY, JSON.stringify(next));
+    else localStorage.removeItem(EMAIL_KEY);
+  } catch {
+    // Only the sidebar reads it; without storage it shows again on the next online open.
+  }
+  listeners.forEach((l) => l());
+}
 
 /** Whether to show the app or the sign-in page. Offline, the app opens on what this device has saved. */
 export async function signedIn(): Promise<boolean> {
   if (session) return true;
   try {
-    session = (await getSession()).signedIn;
+    const answer = await getSession();
+    session = answer.signedIn;
+    if (session) setEmail(answer.email);
     return session;
   } catch {
     return true;
   }
 }
 
-export function markSignedIn() {
+/** After the sign-in form: the email typed is the account's, since the server only accepts that one. */
+export function markSignedIn(account: string) {
   session = true;
+  setEmail(account.trim());
   set(outbox, null);
 }
 
@@ -157,6 +175,7 @@ export function clearDevice() {
   set([], null);
   localStorage.removeItem(LOG_KEY);
   localStorage.removeItem(OUTBOX_KEY);
+  setEmail(null);
   client?.clear();
 }
 
@@ -190,6 +209,15 @@ export function useSyncState() {
     subscribe,
     () => state,
     () => state,
+  );
+}
+
+/** The signed-in account's email, or null when the server has none, as with sign-in off. */
+export function useEmail() {
+  return useSyncExternalStore(
+    subscribe,
+    () => email,
+    () => null,
   );
 }
 

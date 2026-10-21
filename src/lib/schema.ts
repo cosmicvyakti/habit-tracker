@@ -4,11 +4,14 @@ import { SRBAI_MAX, SRBAI_MIN } from "./srbai";
 
 const field = (max: number) => z.string().trim().max(max, `Keep it under ${max} characters.`);
 
-/** The implementation intention "After [cue], I will [behavior] at [context]". Source: Gollwitzer 1999. */
+/**
+ * A habit's plan. The form asks for the behavior and how often; cue, context and consequence are what older plans
+ * carry, the implementation intention "After [cue], I will [behavior] at [context]" (Gollwitzer 1999), kept as they are.
+ */
 export const planSchema = z.object({
-  cue: field(120).min(1, "Name the cue: what happens right before?"),
-  behavior: field(120).min(1, "Name the behavior: what will you do?"),
-  context: field(120).min(1, "Name the place where you will do it."),
+  cue: field(120),
+  behavior: field(120).min(1, "Name the habit."),
+  context: field(120),
   consequence: field(120),
   frequency: z.enum(FREQUENCIES),
 });
@@ -47,10 +50,5 @@ export const opSchema = z.discriminatedUnion("kind", [
 ]);
 export type Op = z.infer<typeof opSchema>;
 
-const dateKey = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
-/** Typed search params shared by the insight and log routes: which habit, and the date range. */
-export const rangeSearchSchema = z.object({
-  habit: z.string().optional().catch(undefined),
-  from: dateKey.optional().catch(undefined),
-  to: dateKey.optional().catch(undefined),
-});
+/** A local day as YYYY-MM-DD, the form a route keeps a day in its address. */
+export const dateKey = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);

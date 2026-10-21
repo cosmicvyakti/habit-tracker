@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dayRange, longestStreak, periodKey, recentPeriods, toKey } from "./dates";
+import { longestStreak, periodKey, recentPeriods, toKey } from "./dates";
 
 const d = (s: string) => {
   const [y, m, day] = s.split("-").map(Number);
@@ -35,16 +35,5 @@ describe("recentPeriods", () => {
   it("ends with the current period, oldest first", () => {
     expect(recentPeriods(today, "monthly", 3).map(toKey)).toEqual(["2026-08-01", "2026-09-01", "2026-10-01"]);
     expect(recentPeriods(today, "weekly", 2).map(toKey)).toEqual(["2026-10-05", "2026-10-12"]);
-  });
-});
-
-describe("dayRange", () => {
-  it("includes the whole last day and defaults to start through today", () => {
-    const r = dayRange("2026-10-01", "2026-10-15", today, today);
-    expect(r.contains(new Date(2026, 9, 15, 23, 59).toISOString())).toBe(true);
-    expect(r.contains(new Date(2026, 9, 16, 0, 0).toISOString())).toBe(false);
-    expect(r.contains(new Date(2026, 8, 30, 23, 59).toISOString())).toBe(false);
-    const all = dayRange(undefined, undefined, d("2026-01-01"), today);
-    expect([toKey(all.from), toKey(all.to)]).toEqual(["2026-01-01", "2026-10-15"]);
   });
 });

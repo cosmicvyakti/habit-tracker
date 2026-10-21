@@ -1,50 +1,36 @@
 # habit-tracker
 
-A habit tracker built on the habit research rather than on streaks.
+A habit tracker with three views: Today, Stats, and Habits.
 
-Each habit is a plan in Wood's context, cue, behavior, and consequence form, written as an implementation intention: "After [cue], I will [behavior] at [place]." Every log entry goes into an append-only event log in SQLite. All views and scores are computed from that log.
+Every check-in goes into an append-only event log in SQLite, and every view and figure is computed from that log. Built with TanStack Start, Router, Query, and Form, plus plain HTML and SVG for charts. It has no streak resets and no random rewards.
 
-Built with TanStack Start, Router, Query, Form, and Table, plus plain SVG for charts. It has no streak resets and no random rewards.
-
-The UI uses the [Lime design system](https://design.how/systems/lime) from design.how. Its components live in `src/components/lime/`, and `npm run lint` checks every screen against Lime's rules. The `.claude/skills/lime` skill holds the rules for UI changes. The app follows the system light or dark setting until you choose a theme with the button in the header.
+The UI uses the [Lime design system](https://design.how/systems/lime) from design.how, with the layer Spendly puts over it (Spendly's `frontend/DESIGN.md`): Figtree for every word and number, a warm-grey page with white cards, an ink sidebar, and one breakpoint, below which the sidebar becomes a top bar and a full-screen navigation page, and dialogs become sheets from the foot. Lime's components live in `src/components/lime/`, the app's layer is `src/app.css`, and `npm run lint` checks every screen against Lime's rules. The `.claude/skills/lime` skill holds the rules for UI changes. The app follows the system light or dark setting until you choose a theme in the account menu, at the foot of the sidebar.
 
 ## Features
 
-- **Define a habit** as an implementation intention. Choose daily, weekly, monthly, or yearly.
-- **Log in one tap.** Place and cue come from the plan. You can edit them, and add effort (1-5) and whether you noticed the payoff, before you tap.
-- **Undo** a mis-tap or retract any entry after confirming. A retraction is a new event, so nothing in the log is ever edited or deleted.
-- **Backfill** a past day, week, month, or year from the period row. Backfilled entries are marked approximate.
-- **SRBAI check-in** every 14 days per daily or weekly habit. Monthly and yearly habits are measured by consistency only.
-- **Insights** for a habit and a date range, both kept in the URL: the automaticity curve, the plateau estimate, consistency, effort and payoff, and context stability.
-- **Log** of every raw event, in a sortable table.
-- **Works offline.** Install it from the browser as an app. Logs, check-ins, and plan edits save on the device first and sync when the server answers.
-- **One account**, with an email and password.
+- **Today**: the week, Monday first, with a ring on each day for how much of its daily plan was done. Step to the week before or after, or pick a day. Below it, that day's habits: tap a habit's check to check it off. The check draws in, then the habit moves down to Completed. Tap it again to clear it, with Undo. A check on a past day is a backfill, marked approximate.
+- **Stats** for a week, month, quarter, or year, kept in the URL: the completion rate and its change from the range before, a chart by day, week, or month, a calendar heat map of daily habits, each habit's rate, status, and longest run, and which weekdays and times of day work best.
+- **Habits**: every habit, with its last seven periods. A habit is a name and how often: daily, weekly, monthly, or yearly. Edit or archive it from the same form.
+- **Works offline.** Install it from the browser as an app. Check-ins and edits save on the device first and sync when the server answers.
+- **One account**, with an email and password. The sidebar shows who is signed in.
 
-## Where each metric comes from
+Habits made before the redesign keep their cue, place, and consequence, and every past SRBAI check-in, effort, and payoff entry stays in the log. The app no longer asks for them or shows them.
 
-| Metric or field | Source |
+## How the figures are counted
+
+| Figure | How |
 | --- | --- |
-| Context (place) of the plan and of each event | Wood & Neal 2007 |
-| Cue, and the "After [cue], I will [behavior] at [place]" plan | Gollwitzer 1999 |
-| `precededBy`: the cue that came before each event | Wood & Neal 2007 |
-| Consequence (expected payoff, optional in the plan) and `payoffNoticed` | Skinner 1938 |
-| Event timestamps and the habit's start date (day 0) | Lally et al. 2010 |
-| Effort, 1-5, as a proxy for automaticity between check-ins; Insights compares the first 4 weeks of the range with the last 4 | Lally et al. 2010 (a proxy, not a measure from the paper) |
-| SRBAI score: the mean of 4 items on a 1-7 scale | Gardner et al. 2012 |
-| Curve `A(t) = a - b·e^(-ct)` and the plateau, the day the curve reaches 95% of `a` | Lally et al. 2010 |
-| Consistency rate and "never miss twice", which replace the reset-to-zero streak | Lally et al. 2010: one missed opportunity did not materially affect habit formation. The "never miss twice" wording is from Clear 2018 |
-| Time-of-day spread (circular standard deviation, in hours) and the share of events after the planned cue | Wood & Neal 2007; Lally et al. 2010 |
-
-The curve and the plateau show once there are at least 5 check-ins over 42 days and the curve explains at least 70% of their variance. Lally et al. reported no plateau for curves that fitted poorly; these thresholds are the app's own. Until then, Insights says it's too early to tell. A plateau after the last check-in is a projection: the curve is dashed there, and Insights gives the month rather than a day. When the scores show no bend yet, the app shows no plateau date instead of a guess. Time-of-day spread and cue share leave out approximate events, because their times and cues were reconstructed rather than recorded.
+| Completion rate | Periods done out of periods planned. A period counts once it has ended, or earlier if it is done. A habit counts from its first period, and an archived one stops counting the day it was archived. |
+| Which habits a range counts | A habit counts in a range or a bar only if its period fits inside it: a week counts daily and weekly habits, a month and a quarter add monthly habits, and a year counts all four. |
+| Perfect day | A day when every daily habit planned was done. |
+| Status: on track, missed once, missed twice | Consecutive missed periods before now. One missed opportunity did not materially affect habit formation (Lally et al. 2010); the "never miss twice" wording is from Clear 2018. |
+| Usual time, which orders Today | The circular mean of the habit's recorded times over the last 60 days, so 23:30 and 00:30 average to midnight. |
+| Time of day | Recorded check-ins by hour: morning 5-12, afternoon 12-17, evening 17-21, night 21-5. Backfills are left out, because their times were reconstructed. |
 
 ### References
 
 - Clear, J. (2018). *Atomic Habits: An Easy & Proven Way to Build Good Habits & Break Bad Ones.* Avery.
-- Gardner, B., Abraham, C., Lally, P., & de Bruijn, G.-J. (2012). Towards parsimony in habit measurement: Testing the convergent and predictive validity of an automaticity subscale of the Self-Report Habit Index. *International Journal of Behavioral Nutrition and Physical Activity, 9*, 102.
-- Gollwitzer, P. M. (1999). Implementation intentions: Strong effects of simple plans. *American Psychologist, 54*(7), 493-503.
 - Lally, P., van Jaarsveld, C. H. M., Potts, H. W. W., & Wardle, J. (2010). How are habits formed: Modelling habit formation in the real world. *European Journal of Social Psychology, 40*(6), 998-1009.
-- Skinner, B. F. (1938). *The Behavior of Organisms: An Experimental Analysis.* Appleton-Century.
-- Wood, W., & Neal, D. T. (2007). A new look at habits and the habit-goal interface. *Psychological Review, 114*(4), 843-863.
 
 ## Data
 
@@ -54,7 +40,7 @@ The server stores data in SQLite at `data/habits.db`. To use a different file, s
 
 Every change is made in the browser first, with its own ID and the time it happened. It goes into a queue saved on the device, shows at once, and is sent to the server in order (`src/data.ts`). The browser also keeps the last log it got from the server, so the app opens without a connection. A service worker caches the app's files (`public/sw.js`). On a device that has never loaded the log, the app says it couldn't load your habits, and loads them as soon as the connection comes back.
 
-Sending a change twice adds nothing, so the queue can always retry. Logs, retractions, and check-ins are only ever added, so two devices never conflict over them. When two devices edit the same plan, the edit made last wins. Archiving keeps the first time.
+Sending a change twice adds nothing, so the queue can always retry. Check-ins and retractions are only ever added, so two devices never conflict over them. When two devices edit the same habit, the edit made last wins. Archiving keeps the first time.
 
 When the server refuses a change, for example one that fails validation, the app drops it and says so. Signing out deletes everything saved on the device, including changes that haven't synced; the app asks first.
 
@@ -79,7 +65,7 @@ HABITS_EMAIL=you@example.com HABITS_PASSWORD_HASH=scrypt:16384:... npm start
 ## Test
 
 ```bash
-npm test           # Vitest: SRBAI, curve fit, consistency, stability, sync
+npm test           # Vitest: consistency, stats, Today's order, dates, sync
 npm run typecheck
 npm run lint       # Lime design system rules
 npm run e2e        # Playwright and axe, against a fresh seeded database, signed in

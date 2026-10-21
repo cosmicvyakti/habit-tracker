@@ -1,6 +1,6 @@
 import { donePeriods } from "./consistency";
-import { addDays, periodKey, periodStart } from "./dates";
-import { activeEvents, Habit, HabitEvent, Log } from "./model";
+import { addDays, FREQUENCIES, periodKey, periodStart } from "./dates";
+import { activeEvents, Habit, HabitEvent, habitStart, Log } from "./model";
 
 const DAY_MINUTES = 24 * 60;
 const RECENT_DAYS = 60;
@@ -25,55 +25,45 @@ export function usualMinute(events: HabitEvent[], today: Date): number | null {
   }
   if (!n) return null;
   const angle = Math.atan2(sin, cos);
-  return Math.round((((angle / (2 * Math.PI)) * DAY_MINUTES) + DAY_MINUTES) % DAY_MINUTES);
+  return Math.round(((angle / (2 * Math.PI)) * DAY_MINUTES + DAY_MINUTES) % DAY_MINUTES);
 }
 
-export interface TodayHabit {
+export interface DayHabit {
   habit: Habit;
   events: HabitEvent[];
-  /** Logged in the current day, week, month or year. */
-  doneNow: boolean;
-  /** The last log made today, if any. */
+  /** Logged in the day, week, month or year that holds the day. */
+  done: boolean;
+  /** The last recorded log on the day itself, if any. */
   loggedAt: Date | null;
   usual: number | null;
 }
 
-export interface TodayPlan {
-  /** The one habit to do next, shown first with the view's primary action. */
-  next: TodayHabit | null;
-  /** Daily habits still open today, in their usual order. */
-  todo: TodayHabit[];
-  /** Everything logged today. */
-  done: TodayHabit[];
-  /** Weekly, monthly and yearly habits not logged today: still open this period, or already done. */
-  later: TodayHabit[];
-}
-
 /**
- * Sorts Today by what needs the person now. Next is the open daily habit usually done earliest in the day; habits
- * with no recorded time yet come after, in the order they were made. With every daily habit done, next is the first
- * open weekly, monthly or yearly habit.
+ * One day's habits, split into what is still to do and what is done. A habit counts from the period it started in, so a
+ * day before it existed doesn't list it. To do runs daily habits first, each by its usual time of day (habits with no
+ * recorded time last), then weekly, monthly and yearly. Done runs in the order the habits were logged.
  */
-export function planToday(log: Log, today: Date): TodayPlan {
-  const items: TodayHabit[] = log.habits
+export function planDay(log: Log, day: Date, today: Date): { todo: DayHabit[]; done: DayHabit[] } {
+  const dayKey = periodKey(day, "daily");
+  const items: DayHabit[] = log.habits
     .filter((h) => !h.archivedAt)
-    .map((habit) => {
-      const events = activeEvents(log, habit.id);
-      const todayKey = periodKey(today, "daily");
-      const todays = events.filter((e) => periodKey(new Date(e.at), "daily") === todayKey);
+    .map((habit) => ({ habit, events: activeEvents(log, habit.id) }))
+    .filter(({ habit, events }) => periodKey(day, habit.frequency) >= periodKey(habitStart(habit, events), habit.frequency))
+    .map(({ habit, events }) => {
+      const todays = events.filter((e) => !e.approximate && periodKey(new Date(e.at), "daily") === dayKey);
       return {
         habit,
         events,
-        doneNow: donePeriods(events, habit.frequency).has(periodKey(today, habit.frequency)),
+        done: donePeriods(events, habit.frequency).has(periodKey(day, habit.frequency)),
         loggedAt: todays.length ? new Date(todays[todays.length - 1].at) : null,
         usual: usualMinute(events, today),
       };
     });
-  const byUsual = (a: TodayHabit, b: TodayHabit) => (a.usual ?? DAY_MINUTES) - (b.usual ?? DAY_MINUTES);
-
-  const done = items.filter((i) => i.loggedAt).sort((a, b) => a.loggedAt!.getTime() - b.loggedAt!.getTime());
-  const todo = items.filter((i) => i.habit.frequency === "daily" && !i.doneNow).sort(byUsual);
-  const later = items.filter((i) => i.habit.frequency !== "daily" && !i.loggedAt);
-  const next = todo.shift() ?? later.find((i) => !i.doneNow) ?? null;
-  return { next, todo, done, later: later.filter((i) => i !== next) };
+  const rank = (i: DayHabit) => FREQUENCIES.indexOf(i.habit.frequency) * DAY_MINUTES + (i.usual ?? DAY_MINUTES - 1);
+  // A log with no time on the day (a backfill, or one on another day of the period) sorts after the timed ones.
+  const at = (i: DayHabit) => i.loggedAt?.getTime() ?? Infinity;
+  return {
+    todo: items.filter((i) => !i.done).sort((a, b) => rank(a) - rank(b)),
+    done: items.filter((i) => i.done).sort((a, b) => at(a) - at(b) || 0),
+  };
 }

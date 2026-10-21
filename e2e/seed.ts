@@ -1,4 +1,4 @@
-// Fresh database for the e2e run: one habit with five SRBAI check-ins, so the curve has data.
+// Fresh database for the e2e run: one daily habit, logged on 50 of the 60 days since it began and none of the last ten.
 import { rmSync } from "node:fs";
 import { applyOp } from "../src/server/db.server.ts";
 
@@ -37,11 +37,3 @@ for (let i = 0; i < 50; i++)
       payoffNote: null,
     },
   });
-const scores: [number, number, number, number][] = [
-  [1, 2, 1, 1],
-  [3, 4, 3, 2],
-  [5, 5, 4, 4],
-  [6, 5, 5, 5],
-  [6, 6, 5, 6],
-];
-scores.forEach((items, i) => applyOp({ kind: "checkIn", checkIn: { id: `seed-check-in-${i}`, habitId: "seed-stretch", at: at(i * 14), items } }));

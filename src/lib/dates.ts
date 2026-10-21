@@ -75,11 +75,3 @@ export function recentPeriods(today: Date, freq: Frequency, count: number): Date
   const current = periodStart(today, freq);
   return Array.from({ length: count }, (_, i) => shiftPeriod(current, freq, i - count + 1));
 }
-
-/** An inclusive local-day range from YYYY-MM-DD search params, defaulting to `start` through `today`. */
-export function dayRange(from: string | undefined, to: string | undefined, start: Date, today: Date) {
-  const lo = from ? fromKey(from) : periodStart(start, "daily");
-  const hi = to ? fromKey(to) : periodStart(today, "daily");
-  const end = addDays(hi, 1);
-  return { from: lo, to: hi, contains: (at: string) => new Date(at) >= lo && new Date(at) < end };
-}

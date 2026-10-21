@@ -1,10 +1,10 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, Page, test } from "@playwright/test";
+import { Browser, expect, Page, test } from "@playwright/test";
 import { AUTH_FILE, EMAIL, PASSWORD } from "../playwright.config";
 
 test.describe.configure({ mode: "serial" });
 
-async function expectNoAxeViolations(page: Page) {
+async function expectNoAxeViolations(page: Page, skip: string[] = []) {
   // A dialog fading in has see-through text, which axe measures as low contrast. Wait for a frame where nothing moves:
   // Base UI starts a dialog's transition a frame or more after it opens, later still on a busy machine.
   await page.evaluate(async () => {
@@ -14,165 +14,143 @@ async function expectNoAxeViolations(page: Page) {
     do await new Promise(requestAnimationFrame);
     while (moving());
   });
-  const { violations } = await new AxeBuilder({ page }).analyze();
+  const { violations } = await new AxeBuilder({ page }).disableRules(skip).analyze();
   expect(violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target).join(", ")}`)).toEqual([]);
 }
 
-/** Opens a habit's sheet from Today: from Next up's details button, or from its row. */
-async function openSheet(page: Page, behavior: string) {
-  const title = behavior.charAt(0).toUpperCase() + behavior.slice(1);
-  await page.getByRole("button", { name: new RegExp(`^(See details for ${behavior}|${title}\\b)`) }).click();
-  const sheet = page.getByRole("dialog", { name: title, exact: true });
-  await expect(sheet).toBeVisible();
-  return sheet;
+const DAY = 86_400_000;
+const dayKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const daysAgo = (n: number) => dayKey(new Date(Date.now() - n * DAY));
+const check = (page: Page, behavior: RegExp) => page.getByRole("checkbox", { name: behavior });
+const STRETCH = /^Stretch for 5 minutes/;
+
+/** The habit's events on the server, as a fresh browser with nothing saved on the device loads them. */
+async function serverEvents(browser: Browser, habitId: string) {
+  const fresh = await browser.newPage({ storageState: AUTH_FILE });
+  await fresh.goto("/");
+  await expect(check(fresh, STRETCH)).toBeVisible();
+  const n = await fresh.evaluate((id) => {
+    const log = JSON.parse(localStorage.getItem("habit-tracker:log")!) as {
+      events: { id: string; habitId: string }[];
+      retractions: { eventId: string }[];
+    };
+    const retracted = new Set(log.retractions.map((r) => r.eventId));
+    return log.events.filter((e) => e.habitId === id && !retracted.has(e.id)).length;
+  }, habitId);
+  await fresh.close();
+  return n;
 }
 
-test("define a habit with an implementation intention", async ({ page }) => {
-  await page.goto("/plan");
-  await page.getByRole("button", { name: "Add habit" }).click();
-  await expect(page.getByText("Name the cue: what happens right before?")).toBeVisible();
-  await expect(page.getByText("Name the place where you will do it.")).toBeVisible();
-
-  await page.getByLabel("After (cue)").fill("I pour my morning coffee");
-  await page.getByLabel("I will (behavior)").fill("read 20 pages");
-  await page.getByLabel("Where").fill("the kitchen table");
-  await page.getByRole("radio", { name: "Weekly" }).click();
-  await expect(page.getByText("After I pour my morning coffee, I will read 20 pages at the kitchen table.")).toBeVisible();
-  await page.getByRole("button", { name: "Add habit" }).click();
-
-  await expect(page).toHaveURL("/");
-  const row = page.getByRole("main").getByRole("listitem").filter({ hasText: "Read 20 pages" });
-  await expect(row.getByText("Weekly, not yet this week")).toBeVisible();
-  // The row opens the habit's sheet, which leads with the plan.
-  const sheet = await openSheet(page, "read 20 pages");
-  await expect(sheet.getByText("After I pour my morning coffee, I will read 20 pages at the kitchen table.")).toBeVisible();
-  await expect(sheet.getByText("Weekly", { exact: true })).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(sheet).toBeHidden();
-  // Two habits, both still open: only the Next up habit's Log is primary.
-  await expect(page.locator('main [data-slot="button"][data-variant="primary"]')).toHaveCount(1);
-  await expect(page.getByRole("region", { name: "Next up" }).locator('[data-variant="primary"]')).toHaveCount(1);
-});
-
-test("log a habit in one tap, with the plan's place and cue", async ({ page }) => {
-  await page.goto("/");
-  const check = page.getByRole("button", { name: "Log read 20 pages this week" });
-  await check.click();
-  await expect(page.getByText("Logged read 20 pages")).toBeVisible();
-  await expect(check).toHaveAttribute("aria-pressed", "true");
-  // Logged today, it moves under Done today.
-  await expect(page.getByRole("region", { name: "Done today" }).getByText("Read 20 pages")).toBeVisible();
-
-  // Undo on the toast retracts that log, then logging again marks the week done again.
-  await page.getByRole("button", { name: "Undo" }).click();
-  await expect(page.getByText("Removed that log of read 20 pages")).toBeVisible();
-  await expect(check).toHaveAttribute("aria-pressed", "false");
-  await check.click();
-  await expect(check).toHaveAttribute("aria-pressed", "true");
-
-  // The sheet's period row shows the current week done too.
-  const sheet = await openSheet(page, "read 20 pages");
-  await expect(sheet.getByRole("toolbar").getByRole("button", { pressed: true })).toHaveCount(1);
-  await sheet.getByRole("button", { name: "See log" }).click();
-  await expect(page).toHaveURL(/\/log\?habit=/);
-  const rows = page.getByRole("row").filter({ hasText: "read 20 pages" });
-  // The undone log stays in the log, marked retracted.
-  await expect(rows.filter({ hasText: "Retracted" })).toHaveCount(1);
-  const row = rows.filter({ hasNotText: "Retracted" });
-  await expect(row).toHaveCount(1);
-  await expect(row.getByRole("cell", { name: "the kitchen table" })).toBeVisible();
-  await expect(row.getByRole("cell", { name: "I pour my morning coffee" })).toBeVisible();
-
-  // Sorting flips between newest and oldest first, never to an unsorted state.
-  const when = page.getByRole("columnheader", { name: /When/ });
-  await expect(when).toHaveAttribute("aria-sort", "descending");
-  await when.getByRole("button").click();
-  await expect(when).toHaveAttribute("aria-sort", "ascending");
-});
-
-test("retract a log only after confirming", async ({ page }) => {
-  await page.goto("/log");
-  const retracted = page.getByRole("row").filter({ hasText: "read 20 pages" }).filter({ hasText: "Retracted" });
-  const retractButton = page.getByRole("button", { name: /^Retract read 20 pages/ });
-  await expect(retracted).toHaveCount(1);
-  await expect(retractButton).toHaveCount(1);
-  await retractButton.click();
-  const dialog = page.getByRole("alertdialog", { name: "Retract this log of read 20 pages?" });
-  await expect(dialog).toBeVisible();
+test("add a habit with just a name and how often", async ({ page }) => {
+  await page.goto("/habits");
+  await page.getByRole("button", { name: "Add habit" }).first().click();
+  const dialog = page.getByRole("dialog", { name: "New habit" });
+  await dialog.getByRole("button", { name: "Add habit" }).click();
+  await expect(dialog.getByText("Name the habit.")).toBeVisible();
+  await expect(dialog.getByLabel("Name")).toBeFocused();
   await expectNoAxeViolations(page);
 
-  // The safe choice comes first, and keeping the log changes nothing.
-  await expect(dialog.getByRole("button", { name: "Keep log" })).toBeFocused();
-  await dialog.getByRole("button", { name: "Keep log" }).click();
+  await dialog.getByLabel("Name").fill("read 20 pages");
+  await dialog.getByRole("radio", { name: "Weekly" }).click();
+  await dialog.getByRole("button", { name: "Add habit" }).click();
   await expect(dialog).toBeHidden();
-  await expect(retracted).toHaveCount(1);
+  const row = page.getByRole("main").getByRole("button", { name: /^Read 20 pages/ });
+  await expect(row).toContainText("Weekly · since");
 
-  await retractButton.click();
-  await page.getByRole("alertdialog").getByRole("button", { name: "Retract log" }).click();
-  await expect(page.getByRole("alertdialog")).toBeHidden();
-  await expect(retracted).toHaveCount(2);
-  await expect(retractButton).toHaveCount(0);
+  // The row opens the same form on the habit.
+  await row.click();
+  const edit = page.getByRole("dialog", { name: "Edit habit" });
+  await expect(edit.getByLabel("Name")).toHaveValue("read 20 pages");
+  await expect(edit.getByRole("radio", { name: "Weekly" })).toBeChecked();
+  await page.keyboard.press("Escape");
+  await expect(edit).toBeHidden();
+  await expect(row).toBeFocused();
+  // Saving lights the row up and hands focus back to it too.
+  await row.click();
+  await edit.getByRole("button", { name: "Save changes" }).click();
+  await expect(edit).toBeHidden();
+  await expect(row).toBeFocused();
 });
 
-test("complete an SRBAI check-in", async ({ page }) => {
+test("check a habit off on Today: it stays put as the check draws, then moves to Completed", async ({ page }) => {
   await page.goto("/");
-  await openSheet(page, "read 20 pages");
-  await page.getByRole("link", { name: "Check in on automaticity for read 20 pages" }).click();
+  const todo = page.getByRole("region", { name: /^To do/ });
+  const done = page.getByRole("region", { name: /^Completed/ });
+  const read = check(page, /^Read 20 pages/);
+  await expect(read).toHaveAttribute("aria-checked", "false");
+  await read.click();
+  await expect(read).toHaveAttribute("aria-checked", "true");
+  await expect(todo.getByRole("checkbox", { name: /^Read 20 pages/ })).toBeVisible();
+  await expect(done.getByRole("checkbox", { name: /^Read 20 pages/ })).toBeVisible();
+  await expect(todo.getByRole("checkbox", { name: /^Read 20 pages/ })).toHaveCount(0);
+  await expect(page.getByRole("status").filter({ hasText: "Checked off read 20 pages." })).toBeAttached();
 
-  await expect(page.getByText("Read 20 pages is something…")).toBeVisible();
-  const answers = [3, 2, 4, 1];
-  const items = ["I do automatically.", "I do without having to consciously remember.", "I do without thinking.", "I start doing before I realize I'm doing it."];
-  for (const [i, item] of items.entries()) {
-    // The scale's ends also carry "strongly disagree" and "strongly agree" in their names.
-    await page.getByRole("radiogroup", { name: item }).getByRole("radio", { name: new RegExp(`^${answers[i]}\\b`) }).click();
-  }
-  await expect(page.getByText("Score: 2.50 out of 7")).toBeVisible();
-  await page.getByRole("button", { name: "Save check-in" }).click();
-
-  await expect(page).toHaveURL(/\/insights\?habit=/);
-  await expect(page.getByText("Saved check-in")).toBeVisible();
-  await expect(page.getByText("Too early to tell. 1 of 5 check-ins so far.")).toBeVisible();
-  await page.goto("/");
-  await openSheet(page, "read 20 pages");
-  await expect(page.getByRole("link", { name: /^Check in on automaticity/ })).toHaveCount(0);
+  // Clearing it is one tap back, and the toast's Undo checks it again.
+  await done.getByRole("checkbox", { name: /^Read 20 pages/ }).click();
+  await expect(todo.getByRole("checkbox", { name: /^Read 20 pages/ })).toHaveAttribute("aria-checked", "false");
+  await page.locator('[data-slot="toast"]').filter({ hasText: "Cleared read 20 pages" }).getByRole("button", { name: "Undo" }).click();
+  await expect(done.getByRole("checkbox", { name: /^Read 20 pages/ })).toHaveAttribute("aria-checked", "true");
 });
 
-test("view the automaticity curve and plateau", async ({ page }) => {
-  await page.goto("/insights?habit=seed-stretch");
-  const chart = page.getByRole("img", { name: /Automaticity over time/ });
-  await expect(chart).toBeVisible();
-  // Every circle is a check-in; the two paths are the fitted curve and its dashed projection past the last check-in.
-  await expect(chart.locator("circle")).toHaveCount(5);
-  await expect(chart.locator("path")).toHaveCount(2);
-  await expect(page.getByText(/(Projected to level off|Leveled off) around .* out of 7\./)).toBeVisible();
+test("pick another day of the week and check a habit off for it", async ({ page }) => {
+  await page.goto(`/?day=${daysAgo(1)}`);
+  await expect(page.getByRole("heading", { name: "Yesterday", level: 1 })).toBeVisible();
+  const day = page.getByRole("radiogroup", { name: "Day" });
+  await expect(day.getByRole("radio", { checked: true })).toHaveAccessibleName(/0 of 1 daily habits done/);
+  await expect(page.getByRole("button", { name: "Next week" })).toBeEnabled({ enabled: new Date().getDay() === 1 });
+
+  await check(page, STRETCH).click();
+  const done = page.getByRole("region", { name: /^Completed/ }).getByRole("checkbox", { name: STRETCH });
+  // A past day's check has no real time, so it says only that it was done.
+  await expect(done).toContainText(/Done$/);
+  await expect(day.getByRole("radio", { checked: true })).toHaveAccessibleName(/1 of 1 daily habits done/);
+
+  await page.getByRole("link", { name: "Go to today" }).click();
+  await expect(page.getByRole("heading", { name: "Today", level: 1 })).toBeVisible();
+  const today = day.locator('[aria-current="date"]');
+  await expect(today).toHaveAttribute("aria-checked", "true");
+  await expect(page.getByRole("button", { name: "Next week" })).toBeDisabled();
+  // A step back is a week back, on the same weekday.
+  await page.getByRole("button", { name: "Previous week" }).click();
+  await expect(page).toHaveURL(`/?day=${daysAgo(7)}`);
+});
+
+test("stats switch between week, month, quarter and year", async ({ page }) => {
+  await page.goto("/stats");
+  await expect(page.getByRole("heading", { name: "Completion" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "By habit" }).getByText("Stretch for 5 minutes")).toBeVisible();
+  // A week has no calendar: its seven days are the chart.
+  await expect(page.getByRole("heading", { name: "Daily habits" })).toHaveCount(0);
+
+  await page.getByRole("radio", { name: "Month" }).click();
+  await expect(page).toHaveURL("/stats?range=month");
+  await expect(page.getByRole("heading", { name: "Daily habits" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Next month" })).toBeDisabled();
+  await page.getByRole("button", { name: "Previous month" }).click();
+  await expect(page).toHaveURL(/range=month&at=/);
+  await expect(page.getByRole("button", { name: "Next month" })).toBeEnabled();
+  await page.getByRole("radio", { name: "Year" }).click();
+  await expect(page.getByRole("heading", { name: "By month" })).toBeVisible();
 });
 
 test("log offline, then sync when the server answers again", async ({ page, browser }) => {
-  const rows = (n: number) => page.getByText(`${n} logged events`);
-  await page.goto("/log?habit=seed-stretch");
-  const caption = await page.locator("caption").textContent();
-  const before = Number(caption?.match(/(\d+) logged events?/)?.[1]);
+  const before = await serverEvents(browser, "seed-stretch");
+  await page.goto("/");
+  await expect(check(page, STRETCH)).toHaveAttribute("aria-checked", "false");
 
   // Every server call fails, as it does with no connection; the app's own files still load.
   await page.route("**/_serverFn/**", (route) => route.abort("internetdisconnected"));
-  await page.getByRole("link", { name: "Today" }).click();
-  await page.getByRole("button", { name: /^Log( again)? stretch for 5 minutes$/ }).click();
-  await expect(page.getByText("Logged stretch for 5 minutes")).toBeVisible();
+  await check(page, STRETCH).click();
   await expect(page.getByRole("status").filter({ hasText: "Offline. 1 change waiting to sync." })).toBeVisible();
 
   // The change survives a reload while still offline.
-  await page.goto("/log?habit=seed-stretch");
-  await expect(rows(before + 1)).toBeVisible();
+  await page.reload();
+  await expect(check(page, STRETCH)).toHaveAttribute("aria-checked", "true");
 
   await page.unroute("**/_serverFn/**");
   await page.evaluate(() => window.dispatchEvent(new Event("online")));
   await expect(page.getByRole("status").filter({ hasText: "waiting" })).toHaveCount(0);
-
-  // A fresh browser, with nothing saved on the device, sees it from the server.
-  const other = await browser.newPage({ storageState: AUTH_FILE });
-  await other.goto("/log?habit=seed-stretch");
-  await expect(other.getByText(`${before + 1} logged events`)).toBeVisible();
-  await other.close();
+  expect(await serverEvents(browser, "seed-stretch")).toBe(before + 1);
 });
 
 test("first open on a new device with no connection says so, then loads when it can", async ({ page }) => {
@@ -213,7 +191,7 @@ test("open the installed app with no connection", async ({ page, context }) => {
     "512x512 maskable",
   ]);
   // An installed app's navigation bar and launch screen take these, whatever the app's theme: pinned to dark.
-  expect([manifest.theme_color, manifest.background_color]).toEqual(["#0e0e0c", "#0e0e0c"]);
+  expect([manifest.theme_color, manifest.background_color]).toEqual(["#1f1f1c", "#1f1f1c"]);
 
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Today", level: 1 })).toBeVisible();
@@ -223,8 +201,8 @@ test("open the installed app with no connection", async ({ page, context }) => {
   await page.reload();
   await expect(page.getByRole("main").getByText(/stretch for 5 minutes/i).first()).toBeVisible();
   // A page not opened yet still loads: the worker cached every built file when it installed.
-  await page.getByRole("link", { name: "Insights" }).click();
-  await expect(page.getByRole("heading", { name: "Insights", level: 1 })).toBeVisible();
+  await page.getByRole("link", { name: "Stats" }).click();
+  await expect(page.getByRole("heading", { name: "Stats", level: 1 })).toBeVisible();
   await context.setOffline(false);
 });
 
@@ -243,14 +221,13 @@ test("the installed app, offline with nothing saved, says it's offline and loads
   await expect(page.getByRole("main").getByText(/stretch for 5 minutes/i).first()).toBeVisible();
 });
 
-test("sign in again after the session ends, without losing a change", async ({ page, context }) => {
-  await page.goto("/log?habit=seed-stretch");
-  const before = Number((await page.locator("caption").textContent())?.match(/(\d+) logged events?/)?.[1]);
-  await page.getByRole("link", { name: "Today" }).click();
+test("sign in again after the session ends, without losing a change", async ({ page, context, browser }) => {
+  const before = await serverEvents(browser, "seed-stretch");
+  await page.goto(`/?day=${daysAgo(2)}`);
+  await expect(check(page, STRETCH)).toHaveAttribute("aria-checked", "false");
 
   await context.clearCookies();
-  // Already logged today, so it's logged again from its sheet.
-  await (await openSheet(page, "stretch for 5 minutes")).getByRole("button", { name: /^Log( again)? stretch for 5 minutes$/ }).click();
+  await check(page, STRETCH).click();
   const status = page.getByRole("status").filter({ hasText: "Signed out." });
   await expect(status).toContainText("1 change waiting to sync.");
 
@@ -260,27 +237,22 @@ test("sign in again after the session ends, without losing a change", async ({ p
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL("/");
   await expect(page.getByRole("status").filter({ hasText: "Signed out" })).toHaveCount(0);
-
-  await page.goto("/log?habit=seed-stretch");
-  await expect(page.getByText(`${before + 1} logged events`)).toBeVisible();
+  expect(await serverEvents(browser, "seed-stretch")).toBe(before + 1);
 });
 
-test("logs made offline in two tabs both sync", async ({ page, context, browser }) => {
-  await page.goto("/log?habit=seed-stretch");
-  const before = Number((await page.locator("caption").textContent())?.match(/(\d+) logged events?/)?.[1]);
-  await page.goto("/");
+test("checks made offline in two tabs both sync", async ({ page, context, browser }) => {
+  const before = await serverEvents(browser, "seed-stretch");
+  await page.goto(`/?day=${daysAgo(3)}`);
   const second = await context.newPage();
-  await second.goto("/");
-  // Already logged today, so each tab logs it again from its sheet.
-  const log = async (p: Page) =>
-    (await openSheet(p, "stretch for 5 minutes")).getByRole("button", { name: /^Log( again)? stretch for 5 minutes$/ }).click();
+  await second.goto(`/?day=${daysAgo(4)}`);
+  await expect(check(second, STRETCH)).toHaveAttribute("aria-checked", "false");
   const status = (p: Page, text: string) => p.getByRole("status").filter({ hasText: text });
 
-  // No connection in either tab: the installed app and a browser tab, say. Each logs once.
+  // No connection in either tab: the installed app and a browser tab, say. Each checks a day off.
   await context.route("**/_serverFn/**", (route) => route.abort("internetdisconnected"));
-  await log(page);
+  await check(page, STRETCH).click();
   await expect(status(page, "Offline. 1 change waiting to sync.")).toBeVisible();
-  await log(second);
+  await check(second, STRETCH).click();
   await expect(status(second, "Offline. 2 changes waiting to sync.")).toBeVisible();
 
   // The first tab closes before it could sync; the second one sends both.
@@ -288,81 +260,40 @@ test("logs made offline in two tabs both sync", async ({ page, context, browser 
   await context.unroute("**/_serverFn/**");
   await second.evaluate(() => window.dispatchEvent(new Event("online")));
   await expect(status(second, "waiting")).toHaveCount(0);
-
-  const fresh = await browser.newPage({ storageState: AUTH_FILE });
-  await fresh.goto("/log?habit=seed-stretch");
-  await expect(fresh.getByText(`${before + 2} logged events`)).toBeVisible();
-  await fresh.close();
+  expect(await serverEvents(browser, "seed-stretch")).toBe(before + 2);
 });
 
-test("backfill a past day from the period row, and bring back a cleared period with Undo", async ({ page }) => {
+test("a habit renamed on another device shows the new name when the app comes back", async ({ page, browser }) => {
   await page.goto("/");
-  const sheet = await openSheet(page, "stretch for 5 minutes");
-  const today = sheet.locator('[aria-current="date"]');
-  const yesterday = sheet.getByRole("button", { name: new RegExp(`^\\S+ ${new Date(Date.now() - 86_400_000).getDate()}\\b`) });
-  await expect(today).toHaveAttribute("aria-pressed", "true");
-  await expect(yesterday).toHaveAttribute("aria-pressed", "false");
-
-  // One tap on an empty past day backfills it; a second tap takes it back.
-  await yesterday.click();
-  await expect(yesterday).toHaveAttribute("aria-pressed", "true");
-  await yesterday.click();
-  await expect(yesterday).toHaveAttribute("aria-pressed", "false");
-
-  // Clearing today takes every log in it, so the toast's Undo logs them again.
-  await today.click();
-  await expect(today).toHaveAttribute("aria-pressed", "false");
-  await page.locator('[data-slot="toast"]').filter({ hasText: /Removed \d+ logs of stretch/ }).getByRole("button", { name: "Undo" }).click();
-  await expect(today).toHaveAttribute("aria-pressed", "true");
-
-  // Nothing leaves the raw log: the backfill is there, approximate and retracted.
-  await page.goto("/log?habit=seed-stretch");
-  const backfill = page.getByRole("row").filter({ hasText: "Approximate" });
-  await expect(backfill).toHaveCount(1);
-  await expect(backfill).toContainText("Retracted");
-});
-
-test("a plan edited on another device reaches the next log's place", async ({ page, browser }) => {
-  await page.goto("/");
-  // Once opened, the sheet stays mounted with the plan it opened with.
-  const sheet = await openSheet(page, "read 20 pages");
-  await page.keyboard.press("Escape");
-  await expect(sheet).toBeHidden();
+  await expect(check(page, /^Read 20 pages/)).toBeVisible();
 
   const phone = await browser.newPage({ storageState: AUTH_FILE });
-  await phone.goto("/");
-  await (await openSheet(phone, "read 20 pages")).getByRole("button", { name: "Edit plan" }).click();
-  await phone.getByLabel("Where").fill("the desk");
+  await phone.goto("/habits");
+  await phone.getByRole("main").getByRole("button", { name: /^Read 20 pages/ }).click();
+  await phone.getByLabel("Name").fill("read 30 pages");
   const synced = phone.waitForResponse((r) => r.url().includes("/_serverFn/") && r.request().method() === "POST");
-  await phone.getByRole("button", { name: "Save plan" }).click();
+  await phone.getByRole("button", { name: "Save changes" }).click();
   await synced;
   await phone.close();
 
-  // Coming back to the app fetches the new plan, and the next log takes its place.
+  // Coming back to the app fetches the new plan.
   await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
-  await openSheet(page, "read 20 pages");
-  await expect(sheet.getByText("After I pour my morning coffee, I will read 20 pages at the desk.")).toBeVisible();
-  await sheet.getByRole("button", { name: "Add details to the next log" }).click();
-  await expect(sheet.getByLabel("Place")).toHaveValue("the desk");
+  await expect(check(page, /^Read 30 pages/)).toBeVisible();
 });
 
 test("a page left open overnight moves on to the new day", async ({ page }) => {
   await page.clock.install();
   await page.goto("/");
-  await expect(page.getByRole("region", { name: "Done today" }).getByText("Stretch for 5 minutes")).toBeVisible();
-  const sheet = await openSheet(page, "stretch for 5 minutes");
-  const current = sheet.locator('[aria-current="date"]');
-  await expect(current).toHaveText(new RegExp(`^\\S+ ${new Date().getDate()}\\b`));
-  await page.keyboard.press("Escape");
-  await expect(sheet).toBeHidden();
+  await expect(check(page, STRETCH)).toHaveAttribute("aria-checked", "true");
+  const current = page.getByRole("radiogroup", { name: "Day" }).locator('[aria-current="date"]');
+  await expect(current).toContainText(String(new Date().getDate()));
 
   // The app sits in the background past midnight, then comes back.
-  const tomorrow = new Date(Date.now() + 86_400_000);
+  const tomorrow = new Date(Date.now() + DAY);
   await page.clock.setSystemTime(tomorrow);
   await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
-  await expect(page.getByRole("region", { name: "Next up" })).toContainText(/stretch for 5 minutes/i);
-  await openSheet(page, "stretch for 5 minutes");
-  await expect(current).toHaveText(new RegExp(`^\\S+ ${tomorrow.getDate()}\\b`));
+  await expect(current).toContainText(String(tomorrow.getDate()));
+  await expect(check(page, STRETCH)).toHaveAttribute("aria-checked", "false");
 });
 
 test("too many wrong passwords lock sign-in for that address", async ({ browser }) => {
@@ -388,16 +319,7 @@ test("too many wrong passwords lock sign-in for that address", async ({ browser 
   await context.close();
 });
 
-const ROUTES = [
-  "/",
-  "/plan",
-  "/plan?habit=seed-stretch",
-  "/check-in",
-  "/check-in?habit=seed-stretch",
-  "/insights?habit=seed-stretch",
-  "/log",
-  "/log?habit=seed-stretch",
-];
+const ROUTES = ["/", `/?day=${daysAgo(1)}`, "/stats", "/stats?range=month", "/stats?range=quarter", "/stats?range=year", "/habits"];
 
 for (const theme of ["light", "dark"]) {
   for (const route of ROUTES) {
@@ -412,8 +334,8 @@ for (const theme of ["light", "dark"]) {
         await closed.first().click();
       }
       await expectNoAxeViolations(page);
-      // Lime allows one primary button per view.
-      expect(await page.locator('[data-slot="button"][data-variant="primary"]').count()).toBeLessThanOrEqual(1);
+      // Lime allows one primary button per view: Habits draws its Add habit in the title row or, on a phone, at the foot.
+      expect(await page.locator('[data-slot="button"][data-variant="primary"]').filter({ visible: true }).count()).toBeLessThanOrEqual(1);
     });
   }
 }
@@ -434,7 +356,7 @@ async function transitions(page: Page) {
   );
 }
 
-for (const route of ["/", "/plan", "/check-in", "/insights", "/log"]) {
+for (const route of ["/", "/stats?range=month", "/habits"]) {
   test(`every transition on ${route} uses Lime's curves and durations`, async ({ page }) => {
     await page.goto(route);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
@@ -453,22 +375,38 @@ test("reduced motion stops every transition", async ({ page }) => {
   expect(moving.map((t) => `${t.name}: ${t.durations.join(" ")}`)).toEqual([]);
 });
 
+/** Opens the account menu at the foot of the sidebar. */
+async function accountMenu(page: Page) {
+  await page.getByRole("complementary", { name: "Sidebar" }).getByRole("button", { name: /^Account/ }).click();
+  const menu = page.getByRole("menu");
+  await expect(menu).toBeVisible();
+  return menu;
+}
+
+test("the sidebar names who is signed in", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("complementary", { name: "Sidebar" })).toContainText(EMAIL);
+  await accountMenu(page);
+  // An open menu floats at the end of the page, outside every landmark, as a popup should.
+  await expectNoAxeViolations(page, ["region"]);
+});
+
 test("the theme follows the system until the user picks one", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "dark" });
   await page.goto("/");
   const html = page.locator("html");
   await expect(html).toHaveAttribute("data-theme", "dark");
-  const toggle = page.getByRole("button", { name: "Dark theme" });
-  await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  const toggle = (await accountMenu(page)).getByRole("menuitemcheckbox", { name: "Dark theme" });
+  await expect(toggle).toHaveAttribute("aria-checked", "true");
 
-  // The phone's status bar matches the page.
+  // The phone's status bar matches the page's ground.
   const barColor = page.locator('meta[name="theme-color"]');
-  await expect(barColor).toHaveAttribute("content", "#0e0e0c");
+  await expect(barColor).toHaveAttribute("content", "#1f1f1c");
 
   await toggle.click();
   await expect(html).toHaveAttribute("data-theme", "light");
-  await expect(toggle).toHaveAttribute("aria-pressed", "false");
-  await expect(barColor).toHaveAttribute("content", "#ffffff");
+  await expect(toggle).toHaveAttribute("aria-checked", "false");
+  await expect(barColor).toHaveAttribute("content", "#f6f5f2");
   await page.reload();
   await expect(html).toHaveAttribute("data-theme", "light");
 });
@@ -481,12 +419,26 @@ test("on a phone, the menu opens every place over the page", async ({ page }) =>
   await menu.click();
   const nav = page.getByRole("dialog", { name: "Navigation" });
   await expect(nav.getByRole("link", { name: "Today" })).toHaveAttribute("aria-current", "page");
+  await expect(nav).toContainText(EMAIL);
   await expectNoAxeViolations(page);
 
-  await nav.getByRole("link", { name: "Insights" }).click();
-  await expect(page).toHaveURL(/\/insights/);
+  await nav.getByRole("link", { name: "Stats" }).click();
+  await expect(page).toHaveURL(/\/stats/);
   await expect(nav).toBeHidden();
   await expect(menu).toBeFocused();
+});
+
+test("on a phone, the habit form opens as a sheet from the foot", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/habits");
+  // The title row's Add habit gives way to one pinned at the foot.
+  await expect(page.getByRole("button", { name: "Add habit" })).toHaveCount(1);
+  await page.getByRole("button", { name: "Add habit" }).click();
+  const sheet = page.getByRole("dialog", { name: "New habit" });
+  await expect(sheet.getByRole("radio", { name: "Yearly" })).toBeInViewport();
+  await expectNoAxeViolations(page);
+  await page.keyboard.press("Escape");
+  await expect(sheet).toBeHidden();
 });
 
 test("a page left open across a deploy offers a reload", async ({ page, context }) => {
@@ -518,28 +470,28 @@ test("a page left open across a deploy offers a reload", async ({ page, context 
 
 // Runs next to last: it archives every habit, which the tests above need.
 test("archive every habit, then the empty states", async ({ page }) => {
-  await page.goto("/");
-  const cards = page.getByRole("main").getByRole("listitem");
-  for (const name of ["stretch for 5 minutes", "read 20 pages"]) {
-    await (await openSheet(page, name)).getByRole("button", { name: "Archive habit" }).click();
+  await page.goto("/habits");
+  const main = page.getByRole("main");
+  for (const name of ["stretch for 5 minutes", "read 30 pages"]) {
+    await main.getByRole("button", { name: new RegExp(`^${name}`, "i") }).click();
+    await page.getByRole("dialog", { name: "Edit habit" }).getByRole("button", { name: "Archive habit" }).click();
     const dialog = page.getByRole("alertdialog", { name: `Archive ${name}?` });
     await expect(dialog.getByRole("button", { name: "Keep habit" })).toBeFocused();
     await expectNoAxeViolations(page);
     await dialog.getByRole("button", { name: "Archive habit" }).click();
     await expect(dialog).toBeHidden();
-    await expect(cards.filter({ hasText: name })).toHaveCount(0);
+    await expect(main.getByRole("button", { name: new RegExp(`^${name}`, "i") })).toHaveCount(0);
   }
 
   await expect(page.getByRole("heading", { name: "No habits yet" })).toBeVisible();
   await expectNoAxeViolations(page);
-  // Insights still shows an archived habit, as the archive dialog promised.
-  await page.goto("/insights");
-  await expect(page.getByRole("heading", { name: "Automaticity" })).toBeVisible();
-  await expect(page.getByText("Stretch for 5 minutes (archived)")).toBeVisible();
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "No habits yet" })).toBeVisible();
+  // Stats still counts an archived habit in the range it was planned in, as the archive dialog promised.
+  await page.goto("/stats?range=month");
+  await expect(page.getByRole("region", { name: "By habit" }).getByText("Stretch for 5 minutes")).toBeVisible();
+  await expect(page.getByRole("region", { name: "By habit" }).getByText("Archived").first()).toBeVisible();
   await expectNoAxeViolations(page);
-  // The archived habit's log stays.
-  await page.goto("/log");
-  await expect(page.getByRole("row").filter({ hasText: "stretch for 5 minutes" }).first()).toBeVisible();
 });
 
 // Runs last: signing out ends the session every other test shares.
@@ -548,10 +500,10 @@ test("sign out clears this device", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Today", level: 1 })).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem("habit-tracker:log"))).not.toBeNull();
 
-  await page.getByRole("button", { name: "Sign out" }).click();
+  await (await accountMenu(page)).getByRole("menuitem", { name: "Sign out" }).click();
   await expect(page).toHaveURL("/sign-in");
-  const saved = await page.evaluate(() => [localStorage.getItem("habit-tracker:log"), localStorage.getItem("habit-tracker:outbox")]);
-  expect(saved).toEqual([null, null]);
-  await page.goto("/log");
+  const saved = await page.evaluate(() => ["log", "outbox", "email"].map((k) => localStorage.getItem(`habit-tracker:${k}`)));
+  expect(saved).toEqual([null, null, null]);
+  await page.goto("/stats");
   await expect(page).toHaveURL("/sign-in");
 });
